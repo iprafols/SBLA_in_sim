@@ -24,7 +24,7 @@ try:
     SBLA_IN_DIR_BASE = THIS_DIR.split("sbla_in_sim/")[0]
     git_hash = git.Repo(SBLA_IN_DIR_BASE).head.object.hexsha
 except InvalidGitRepositoryError:  # pragma: no cover
-    git_hash = metadata.metadata('picca')['Summary'].split(':')[-1]
+    git_hash = metadata.metadata('sbla_in_sim')['Summary'].split(':')[-1]
 
 ACCEPTED_LOGGING_OPTIONS = [
     "log file", "logging level console", "logging level file", "log level yt"
