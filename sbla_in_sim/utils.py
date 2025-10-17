@@ -1,6 +1,8 @@
 """This module define several functions and variables used throughout the
 package"""
 import logging
+import os
+import sys
 
 PROGRESS_LEVEL_NUM = 15
 logging.addLevelName(PROGRESS_LEVEL_NUM, "PROGRESS")
