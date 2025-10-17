@@ -35,7 +35,7 @@ ACCEPTED_GENERAL_OPTIONS = [
 
 ACCEPTED_RANDOM_RAYS_OPTIONS = [
     "noise dist", "num rays", "random seed", 
-    "ray base name", "snapshots", "snapshots dir", "z distribution",
+    "rays base name", "snapshots", "snapshots dir", "z distribution",
 ]
 
 DEFAULT_CONFIG = {
