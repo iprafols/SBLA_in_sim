@@ -24,7 +24,7 @@ from sbla_in_sim.random_rays import (
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def main(args):
+def main(cmdargs=None):
     """Run the simulations with rays crossing nearby galaxy centers with a 
     random distribution
 
@@ -33,11 +33,26 @@ def main(args):
     args: argparse.Namespace
     Parsed arguments (parser at the bottom of the file).
     """
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=('Compute the delta field '
+                     'from a list of spectra'))
+
+    parser.add_argument(
+        'config_file',
+        type=str,
+        default=None,
+        help=
+        ('Configuration file.'))
+
+    args = parser.parse_args(cmdargs)
+
+    t0_0 = time.time()
+
     # load configuration
     config = Config(args.config_file)
     logger = logging.getLogger("sbla_in_sim")
 
-    t0_0 = time.time()
 
     #################################
     # continue previous run:        #
@@ -215,21 +230,3 @@ def main(args):
 
     t0_1 = time.time()
     logger.info(f"Total elapsed time: {(t0_1-t0_0)/60.0} minutes")
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description=('Compute the delta field '
-                     'from a list of spectra'))
-
-    parser.add_argument(
-        'config_file',
-        type=str,
-        default=None,
-        help=
-        ('Configuration file.'))
-
-    args = parser.parse_args(cmdargs)
-
-    main(args)
