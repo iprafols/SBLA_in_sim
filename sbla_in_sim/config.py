@@ -35,7 +35,7 @@ ACCEPTED_GENERAL_OPTIONS = [
 
 ACCEPTED_RANDOM_RAYS_OPTIONS = [
     "noise dist", "num rays", "random seed", 
-    "ray base name", "snapshots", "snapshots dir", "z_dist",
+    "ray base name", "snapshots", "snapshots dir", "z distribution",
 ]
 
 DEFAULT_CONFIG = {
@@ -323,16 +323,16 @@ class Config:
         if self.snapshots_dir is None:
             raise ConfigError("Missing variable 'snapshots dir' in section [random rays]")
 
-        self.z_dist = section.get("z_dist")
+        self.z_dist = section.get("z distribution")
         if self.z_dist is None:
-            raise ConfigError("Missing variable 'z_dist' in section [random rays]")
+            raise ConfigError("Missing variable 'z distribution' in section [random rays]")
 
-        self.random_seed = section.getint("random_seed")
+        self.random_seed = section.getint("random seed")
         # this should never be true as the general section is loaded in the
         # default dictionary
         if self.random_seed is None:  # pragma: no cover
             raise ConfigError(
-                "Missing variable 'random_seed' in section [random rays]")
+                "Missing variable 'random seed' in section [random rays]")
 
         self.rays_base_name = section.get("rays base name")
         # this should never be true as the general section is loaded in the
