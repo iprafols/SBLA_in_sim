@@ -137,7 +137,7 @@ def main(cmdargs=None):
         # generate redshift distributions
         ndz = np.genfromtxt(config.z_dist, names=True, encoding="UTF-8")
         z_from_prob = interp1d(ndz["ndz_pdf"], ndz["z"])
-        probs = np.random.uniform(0.0, 1.0, size=args.n_points)
+        probs = np.random.uniform(0.0, 1.0, size=config.num_rays)
         redshifts = z_from_prob(probs)
         pos = np.where(redshifts > snapshots_zmax)
         while pos[0].size > 0:
@@ -231,7 +231,7 @@ def main(cmdargs=None):
         ds = load_snapshot(snapshot, config.snapshots_dir)
         pos = np.where(snapshot_names == snapshot)
         context = multiprocessing.get_context('fork')
-        with context.Pool(processes=args.num_processors) as pool:
+        with context.Pool(processes=config.num_processors) as pool:
             arguments = zip(
                 repeat(ds),
                 redshifts[pos],
@@ -239,7 +239,7 @@ def main(cmdargs=None):
                 end_shifts[pos],
                 galaxy_positions[pos],
                 names[pos],
-                repeat(args.output_dir),
+                repeat(config.output_dir),
                 noise[pos])
 
             pool.starmap(run_simple_ray, arguments)
