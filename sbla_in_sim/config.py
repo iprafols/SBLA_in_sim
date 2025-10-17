@@ -372,12 +372,8 @@ class Config:
         """
         if not os.path.exists(f"{self.output_dir}/config.ini"):
             os.makedirs(self.output_dir, exist_ok=True)
-            os.makedirs(self.output_dir + "Delta/", exist_ok=True)
-            os.makedirs(self.output_dir + "Log/", exist_ok=True)
             self.write_config()
         elif self.overwrite:
-            os.makedirs(self.output_dir + "Delta/", exist_ok=True)
-            os.makedirs(self.output_dir + "Log/", exist_ok=True)
             self.write_config()
         else:
             raise ConfigError("Specified folder contains a previous run. "
