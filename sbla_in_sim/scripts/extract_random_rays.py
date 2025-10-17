@@ -219,7 +219,7 @@ def main(cmdargs=None):
             "gal_pos_z": galaxy_position_z,
             "noise": noise,
         })
-        catalogue.write(f"{config.output_dir}/{config.catalogue_file}")
+        catalogue.write(os.path.join(config.output_dir, config.output_catalogue))
 
         t1_1 = time.time()
         logger.info(f"Catalogue created. Elapsed time: {(t1_1-t1_0)/60.0} minutes")
