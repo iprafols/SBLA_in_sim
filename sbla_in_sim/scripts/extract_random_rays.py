@@ -59,6 +59,20 @@ def main(cmdargs=None):
     #  - read catalogue             #
     #  - resume skewers computation #
     #################################
+    if config.continue_previous_run 
+        if not os.path.exists(config.output_dir):
+            logger.warning(
+                "WARNING: continue_previous_run is set to True but "
+                "output directory does not exist.")
+            logger.warning("Setting continue_previous_run to False")
+            config.continue_previous_run = False
+        if not os.path.exists(os.path.join(config.output_dir, config.output_catalogue)):
+            logger.warning(
+                "WARNING: continue_previous_run is set to True but "
+                "catalogue file does not exist.")
+            logger.warning("Setting continue_previous_run to False")
+            config.continue_previous_run = False
+
     if config.continue_previous_run:
 
         logger.info("Continuing with existing run")
@@ -66,11 +80,17 @@ def main(cmdargs=None):
         t1_0 = time.time()
 
         # load catalogue
-        catalogue = Table.read(f"{config.output_dir}/{config.output_catalogue}")
+        catalogue = Table.read(os.path.join(config.output_dir, config.output_catalogue))
 
         # select the entries that were not previously run
         not_run_mask = np.array([
-            not (os.path.isfile(f"{config.output_dir}/"+entry["name"]+"_spec_nonoise.fits.gz") and (entry["noise"] < 0.0 or os.path.isfile(f"{config.output_dir}/"+entry["name"]+"_spec.fits.gz")))
+            not (os.path.isfile(os.path.join(config.output_dir, 
+                                             entry["name"]+"_spec_nonoise.fits.gz")) 
+                 and (entry["noise"] < 0.0 or 
+                      os.path.isfile(os.path.join(config.output_dir, 
+                                                  entry["name"]+"_spec.fits.gz"))
+                      )
+                )
             for entry in catalogue
         ])
         not_run_catalogue = catalogue[not_run_mask]
