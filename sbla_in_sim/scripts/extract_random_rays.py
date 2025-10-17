@@ -59,7 +59,7 @@ def main(cmdargs=None):
     #  - read catalogue             #
     #  - resume skewers computation #
     #################################
-    if config.continue_previous_run 
+    if config.continue_previous_run: 
         if not os.path.exists(config.output_dir):
             logger.warning(
                 "WARNING: continue_previous_run is set to True but "
