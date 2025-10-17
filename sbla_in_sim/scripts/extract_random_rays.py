@@ -66,7 +66,7 @@ def main(cmdargs=None):
         t1_0 = time.time()
 
         # load catalogue
-        catalogue = Table.read(f"{config.output_dir}/{config.catalogue_file}")
+        catalogue = Table.read(f"{config.output_dir}/{config.output_catalogue}")
 
         # select the entries that were not previously run
         not_run_mask = np.array([
