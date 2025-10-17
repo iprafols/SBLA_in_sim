@@ -18,7 +18,7 @@ from sbla_in_sim.random_rays import (
     find_rho_max,
     generate_ray,
     load_snapshot,
-    run_simple_ray_fast,
+    run_simple_ray,
     select_snapshot,
 )
 
