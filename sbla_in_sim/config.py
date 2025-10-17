@@ -113,12 +113,12 @@ class Config:
     num_rays: int
     Number of random rays to extract
 
-    out_dir: str
+    output_dir: str
     Name of the directory where the deltas will be saved
 
     overwrite: bool
     If True, overwrite a previous run in the saved in the same output
-    directory. Does not have any effect if the folder `out_dir` does not
+    directory. Does not have any effect if the folder `output_dir` does not
     exist.
 
     random_seed: int
@@ -170,7 +170,7 @@ class Config:
         self.continue_previous_run = None
         self.overwrite = None
         self.num_processors = None
-        self.out_dir = None
+        self.output_dir = None
         self.output_catalogue = None
         self.__format_general_section()
 
@@ -234,12 +234,12 @@ class Config:
                 "Missing variable 'num processors' in section [general]")
         if self.num_processors == 0:
             self.num_processors = (multiprocessing.cpu_count() // 2)
-    
-        self.out_dir = section.get("out dir")
-        if self.out_dir is None:
-            raise ConfigError("Missing variable 'out dir' in section [general]")
-        if not self.out_dir.endswith("/"):
-            self.out_dir += "/"
+
+        self.output_dir = section.get("output dir")
+        if self.output_dir is None:
+            raise ConfigError("Missing variable 'output dir' in section [general]")
+        if not self.output_dir.endswith("/"):
+            self.output_dir += "/"
 
         self.output_catalogue = section.get("output catalogue")
         if self.output_catalogue is None:
@@ -269,7 +269,7 @@ class Config:
             raise ConfigError(
                 "Variable 'log file' in section [logging] should not incude folders. "
                 f"Found: {self.log}")
-        self.log = self.out_dir + "Log/" + self.log
+        self.log = self.output_dir + "Log/" + self.log
         section["log file"] = self.log
 
         self.logging_level_console = section.get("logging level console")
@@ -370,28 +370,28 @@ class Config:
         ConfigError if the output path was already used and the
         overwrite is not selected
         """
-        if not os.path.exists(f"{self.out_dir}/config.ini"):
-            os.makedirs(self.out_dir, exist_ok=True)
-            os.makedirs(self.out_dir + "Delta/", exist_ok=True)
-            os.makedirs(self.out_dir + "Log/", exist_ok=True)
+        if not os.path.exists(f"{self.output_dir}/config.ini"):
+            os.makedirs(self.output_dir, exist_ok=True)
+            os.makedirs(self.output_dir + "Delta/", exist_ok=True)
+            os.makedirs(self.output_dir + "Log/", exist_ok=True)
             self.write_config()
         elif self.overwrite:
-            os.makedirs(self.out_dir + "Delta/", exist_ok=True)
-            os.makedirs(self.out_dir + "Log/", exist_ok=True)
+            os.makedirs(self.output_dir + "Delta/", exist_ok=True)
+            os.makedirs(self.output_dir + "Log/", exist_ok=True)
             self.write_config()
         else:
             raise ConfigError("Specified folder contains a previous run. "
                               "Pass overwrite option in configuration file "
                               "in order to ignore the previous run or "
                               "change the output path variable to point "
-                              f"elsewhere. Folder: {self.out_dir}")
+                              f"elsewhere. Folder: {self.output_dir}")
 
     def write_config(self):
         """This function writes the configuration options for later
         usages. The file is saved under the name .config.ini and in
-        the self.out_dir folder
+        the self.output_dir folder
         """
-        outname = f"{self.out_dir}/.config.ini"
+        outname = f"{self.output_dir}/.config.ini"
         if os.path.exists(outname):
             newname = f"{outname}.{os.path.getmtime(outname)}"
             os.rename(outname, newname)
