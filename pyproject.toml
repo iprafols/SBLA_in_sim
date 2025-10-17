@@ -21,10 +21,10 @@ dependencies = [
 ]
 
 [project.scripts]
-extract-random-rays = "scripts.extract_random_rays:main"
+"extract_random_rays.py" = "sbla_in_sim.scripts.extract_random_rays:main"
 
 [tool.setuptools]
-packages = ["sbla_in_sim"]
+packages = ["sbla_in_sim", "sbla_in_sim.scripts"]
 package-dir = {"" = "."}
 
 [tool.setuptools.dynamic]
