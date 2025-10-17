@@ -59,7 +59,7 @@ def main(cmdargs=None):
     #  - read catalogue             #
     #  - resume skewers computation #
     #################################
-    if config.continue_run:
+    if config.continue_previous_run:
 
         logger.info("Continuing with existing run")
         logger.info("Loading catalogue")
