@@ -260,17 +260,17 @@ class Config:
             raise ConfigError("Missing section [logging]")
         section = self.config["logging"]
 
-        self.log = section.get("log")
+        self.log = section.get("log file")
         # this should never be true as the general section is loaded in the
         # default dictionary
         if self.log is None:  # pragma: no cover
-            raise ConfigError("Missing variable 'log' in section [logging]")
+            raise ConfigError("Missing variable 'log file' in section [logging]")
         if "/" in self.log:
             raise ConfigError(
-                "Variable 'log' in section [logging] should not incude folders. "
+                "Variable 'log file' in section [logging] should not incude folders. "
                 f"Found: {self.log}")
         self.log = self.out_dir + "Log/" + self.log
-        section["log"] = self.log
+        section["log file"] = self.log
 
         self.logging_level_console = section.get("logging level console")
         # this should never be true as the logging section is loaded in the
