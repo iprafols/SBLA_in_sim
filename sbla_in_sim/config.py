@@ -30,7 +30,7 @@ ACCEPTED_LOGGING_OPTIONS = [
     "log file", "logging level console", "logging level file", "log level yt"
 ]
 ACCEPTED_GENERAL_OPTIONS = [
-    "continue previous run", "out dir", "output catalogue", "overwrite", "num processors"
+    "continue previous run", "output dir", "output catalogue", "overwrite", "num processors"
 ]
 
 ACCEPTED_RANDOM_RAYS_OPTIONS = [
