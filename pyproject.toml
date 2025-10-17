@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sbla_in_sim"
+version = "attr: sbla_in_sim._version.__version__"
+description = "Extract random spectra from simulations to find SBLAs"
+authors = [
+    { name="Ignasi Pérez-Ràfols", email="iprafols@gmail.com" }
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "astropy",
+    "gitpython",
+    "numpy",
+    "scipy",
+    "trident",
+    "yt",
+]
+
+[project.scripts]
+extract-random-rays = "scripts.extract_random_rays:main"
+
+[tool.setuptools]
+packages = ["sbla_in_sim"]
+package-dir = {"" = "."}
