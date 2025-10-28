@@ -6,7 +6,7 @@ import multiprocessing
 import os
 import time
 
-from astropy.table import Table
+from astropy.table import Table, hstack
 import numpy as np
 
 from sbla_in_sim.config import Config
@@ -86,7 +86,7 @@ def main(cmdargs=None):
         fit_results = Table(np.concatenate([
             item[0] for item in fit_results_list
         ]))
-        catalogue = np.hstack([catalogue, fit_results])
+        catalogue = hstack([catalogue, fit_results])
         
         # save catalogue
         catalogue.write(
