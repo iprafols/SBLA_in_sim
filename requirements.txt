@@ -1,5 +1,6 @@
 astropy
 gitpython
+iminuit
 numpy
 scipy
 yt
