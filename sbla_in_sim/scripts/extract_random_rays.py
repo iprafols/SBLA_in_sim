@@ -30,8 +30,8 @@ def main(cmdargs=None):
 
     Arguments
     ---------
-    args: argparse.Namespace
-    Parsed arguments (parser at the bottom of the file).
+    cmdargs: argparse.Namespace
+    Argument parser namespace
     """
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,

@@ -17,6 +17,7 @@ from yt.config import ytcfg
 
 from sbla_in_sim._version import __version__ as sbla_in_sim_version
 from sbla_in_sim.errors import ConfigError
+from sbla_in_sim.line_fit_utils import ORDER_FITS, SPECIES_DICTS
 from sbla_in_sim.utils import setup_logger, PROGRESS_LEVEL_NUM
 
 try:
@@ -57,6 +58,11 @@ DEFAULT_CONFIG = {
         "random seed": 45737353,
         "rays base name": "ray_",
     },
+    "fit": {
+        "order fits": ORDER_FITS,
+        "species dicts": SPECIES_DICTS,
+        "input extension": ".fits.gz",
+    }, 
     "run specs": {
         "git hash": git_hash,
         "timestamp": str(datetime.now()),
@@ -188,6 +194,11 @@ class Config:
         self.snapshots_dir = None
         self.z_dist = None
         self.__format_random_rays_section()
+        
+        self.input_extension = None
+        self.order_fits = None
+        self.species_dicts = None
+        self.__format_fit_section()
 
         # initialize folders where data will be saved
         self.initialize_folders()
@@ -200,6 +211,32 @@ class Config:
         set_log_level_yt(self.log_level_yt)
         ytcfg.update({"yt": {"suppress_stream_logging": True}})
 
+
+    def __format_fit_section(self):
+        """Format the fit section of the parser into usable data
+
+        Raise
+        -----
+        ConfigError if the config file is not correct
+        """
+        # this should never be true as the fit section is loaded in the
+        # default dictionary
+        if "fit" not in self.config:  # pragma: no cover
+            raise ConfigError("Missing section [fit]")
+        section = self.config["fit"]
+
+        self.input_extension = section.get("input extension")
+        if self.input_extension is None:
+            raise ConfigError("Missing variable 'input extension' in section [fit]")
+        
+        self.order_fits = section.get("order fits")
+        if self.order_fits is None:
+            raise ConfigError("Missing variable 'order fits' in section [fit]")
+        self.order_fits = [species.strip() for species in self.order_fits.split(",")]
+
+        self.species_dicts = section.get("species dicts")
+        if self.species_dicts is None: 
+            raise ConfigError("Missing variable 'species dicts' in section [fit]")
 
     def __format_general_section(self):
         """Format the general section of the parser into usable data
