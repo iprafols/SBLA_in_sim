@@ -227,8 +227,8 @@ def fit_lines(rays_base_name, input_extension, noise, start_z, start_b,
             minimizer.hesse()
 
             all_species_lines[f"{species} N [cm^-2]"] = minimizer.values["column_density"]
-            all_species_lines[f"{species} N [cm^-2]"] = minimizer.values["impact_parameter"]
-            all_species_lines[f"{species} N [cm^-2]"] = minimizer.values["redshift"]
+            all_species_lines[f"{species} b [km/s]"] = minimizer.values["impact_parameter"]
+            all_species_lines[f"{species} f"] = minimizer.values["redshift"]
 
             flux_fit = leasts_squares.compute_line_profile(
                 minimizer.values["column_density"],
