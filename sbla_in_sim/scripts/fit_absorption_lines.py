@@ -1,10 +1,10 @@
 """Module to manage fits to the lines"""
 import argparse
+from itertools import repeat
 import logging
 import multiprocessing
 import os
 import time
-from timeit import repeat
 
 from astropy.table import Table
 import numpy as np
