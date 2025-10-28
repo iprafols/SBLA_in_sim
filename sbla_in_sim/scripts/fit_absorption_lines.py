@@ -89,8 +89,9 @@ def main(cmdargs=None):
         catalogue = hstack([catalogue, fit_results])
         
         # save catalogue
+        base_name = os.path.splitext(os.path.splitext(config.output_catalogue)[0])[0]  # Handle .fits.gz double extension
         fit_catalogue = os.path.join(
-            config.output_dir, config.output_catalogue.replace(".fits", "_fitlines.fits")
+            config.output_dir, f"{base_name}_fitlines.csv"
         )
         logger.info(f"Saving fitted catalogue to {fit_catalogue}")
         catalogue.write(
