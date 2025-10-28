@@ -89,9 +89,12 @@ def main(cmdargs=None):
         catalogue = hstack([catalogue, fit_results])
         
         # save catalogue
-        fit_catalogue = config.output_catalogue.replace(".fits", "_fitlines.fits")
+        fit_catalogue = os.path.join(
+            config.output_dir, config.output_catalogue.replace(".fits", "_fitlines.fits")
+        )
+        logger.info(f"Saving fitted catalogue to {fit_catalogue}")
         catalogue.write(
-            os.path.join(config.output_dir, fit_catalogue),
+            fit_catalogue,
             overwrite=True)
 
     t1_1 = time.time()
