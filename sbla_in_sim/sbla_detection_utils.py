@@ -90,7 +90,7 @@ def find_sblas(transmission_file, name, plot=False):
         )
         ax.plot(wavelength, flux)
         xlim = ax.get_xlim()
-        ax.hlines(-0.75, xlim[0], xlim[1], linestyle="dashed", color="k")
+        ax.hlines(SBLA_THRESHOLD, xlim[0], xlim[1], linestyle="dashed", color="k")
         ax.set_xlim(xlim)
         ax.set_ylabel("Transmitted flux fraction", fontsize=fontsize)
         ax.set_xlabel("Wavelength [Angstrom]", fontsize=fontsize)
