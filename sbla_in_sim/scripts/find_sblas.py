@@ -90,7 +90,8 @@ def main(cmdargs=None):
     sblas_table_reduced_list = []
     for index_spectrum in tqdm.tqdm(range(n_spectra)):
         transmission_file = os.path.join(dir, f"{catalogue['name'][index_spectrum]}_spec_nonoise.fits.gz")
-        sblas_table_all, sblas_table_reduced = find_sblas(transmission_file, plot=args.plot)
+        name = catalogue['name'][index_spectrum]
+        sblas_table_all, sblas_table_reduced = find_sblas(transmission_file, name, plot=args.plot)
 
         sblas_table_all_list.append(sblas_table_all)
         sblas_table_reduced_list.append(sblas_table_reduced)

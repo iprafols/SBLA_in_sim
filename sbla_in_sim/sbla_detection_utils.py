@@ -35,13 +35,16 @@ LYA_WL = 1215.67
 
 SBLA_THRESHOLD = 0.25
 
-def find_sblas(transmission_file, plot=False):
+def find_sblas(transmission_file, name, plot=False):
     """Find SBLAs in a delta_file
     
     Arguments
     ---------
     transmission_file: str
     Path to transmission files in fits format
+
+    name: str
+    Name identifier for the spectrum
 
     plot: boolean - Default: False
     If True, plot the spectra and the found SBLAs.
@@ -61,12 +64,12 @@ def find_sblas(transmission_file, plot=False):
     
     sblas_table_all = Table(
         names=("name", "lambda_abs", "vel_sbla", "lambda_min", "lambda_max", "z"),
-        dtype=(">i8", ">f4", ">f4", ">f4", ">f4", ">f4"),
+        dtype=("U50", ">f4", ">f4", ">f4", ">f4", ">f4"),
     )
 
     sblas_table_reduced = Table(
         names=("name", "lambda_abs", "vel_sbla", "lambda_min", "lambda_max", "z"),
-        dtype=(">i8", ">f4", ">f4", ">f4", ">f4", ">f4"),
+        dtype=("U50", ">f4", ">f4", ">f4", ">f4", ">f4"),
     )
 
     # here we will store SBLAs detected for different velocities
@@ -82,7 +85,7 @@ def find_sblas(transmission_file, plot=False):
         ax = fig.add_subplot(111)
     
         ax.set_title(
-            f"Name: {transmission_file}",
+            f"Name: {name}",
             fontsize=titlefontsize
         )
         ax.plot(wavelength, flux)
@@ -154,7 +157,7 @@ def find_sblas(transmission_file, plot=False):
         for interval in intervals:
             lambda_abs = np.mean(interval)
             sblas_table_all.add_row((
-                transmission_file,
+                name,
                 lambda_abs,
                 vel,
                 np.min(interval),
@@ -167,7 +170,7 @@ def find_sblas(transmission_file, plot=False):
         for interval in intervals:
             lambda_abs = np.mean(interval)
             sblas_table_reduced.add_row((
-                transmission_file,
+                name,
                 np.mean(interval),
                 vel,
                 np.min(interval),
