@@ -1,7 +1,9 @@
 astropy
 gitpython
 iminuit
+matplotlib
 numpy
 scipy
 yt
+tqdm
 trident
