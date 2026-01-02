@@ -3,6 +3,7 @@ This file contains a script to find SBLAs in skewers extracted from simulations.
 """
 import argparse
 import logging
+import os
 import time
 
 from astropy.table import Table
@@ -46,10 +47,13 @@ def main(cmdargs=None):
 
     args = parser.parse_args(cmdargs)
 
+    #################
+    # Logging setup #
+    #################
     # Set up logging to always log to terminal, and optionally to file
     logger = logging.getLogger("sbla_in_sim")
     logger.setLevel(logging.INFO)
-    
+
     # Clear any existing handlers
     logger.handlers.clear()
     
@@ -67,10 +71,12 @@ def main(cmdargs=None):
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
-    t0 = time.time()
-
-    # load catalogue
+    ##################
+    # load catalogue #
+    ##################
+     t0 = time.time()
     logger.info("Loading catalogue")
+    dir = os.path.dirname(args.catalogue)
     catalogue = Table.read(args.catalogue)
     n_spectra = len(catalogue)
 
@@ -84,7 +90,7 @@ def main(cmdargs=None):
     sblas_table_all_list = []
     sblas_table_reduced_list = []
     for index_spectrum in tqdm.tqdm(range(n_spectra)):
-        transmission_file = catalogue["name"][index_spectrum]
+        transmission_file = os.path.join(dir, f"{catalogue['name'][index_spectrum]}.fits.gz")
         sblas_table_all, sblas_table_reduced = find_sblas(transmission_file, plot=args.plot)
 
         sblas_table_all_list.append(sblas_table_all)
