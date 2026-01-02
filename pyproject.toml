@@ -23,6 +23,7 @@ dependencies = [
 [project.scripts]
 "extract_random_rays.py" = "sbla_in_sim.scripts.extract_random_rays:main"
 "fit_absorption_lines.py" = "sbla_in_sim.scripts.fit_absorption_lines:main"
+"find_sblas.py" = "sbla_in_sim.scripts.find_sblas:main"
 
 [tool.setuptools]
 packages = ["sbla_in_sim", "sbla_in_sim.scripts"]
