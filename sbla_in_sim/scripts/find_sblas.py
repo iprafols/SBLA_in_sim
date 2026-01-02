@@ -3,7 +3,7 @@ This file contains a script to find SBLAs in skewers extracted from simulations.
 """
 import argparse
 import logging
-from time import time
+import time
 
 from astropy.table import Table
 import tqdm
