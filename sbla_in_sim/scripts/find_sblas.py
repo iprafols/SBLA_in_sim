@@ -6,7 +6,7 @@ import logging
 import os
 import time
 
-from astropy.table import Table
+from astropy.table import Table, vstack
 import tqdm
 
 from sbla_in_sim.sbla_detection_utils import find_sblas
@@ -101,8 +101,8 @@ def main(cmdargs=None):
 
     # concatenate all SBLAs
     logger.info("Concatenating SBLA tables")
-    sblas_table_all = Table.concatenate(sblas_table_all_list)
-    sblas_table_reduced = Table.concatenate(sblas_table_reduced_list)
+    sblas_table_all = vstack(sblas_table_all_list)
+    sblas_table_reduced = vstack(sblas_table_reduced_list)
 
     t3 = time.time()
     logger.info(f"SBLA tables concatenated. Elapsed time: {(t3-t2)/60.0} minutes")
