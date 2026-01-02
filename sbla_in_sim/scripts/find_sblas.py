@@ -74,7 +74,7 @@ def main(cmdargs=None):
     ##################
     # load catalogue #
     ##################
-     t0 = time.time()
+    t0 = time.time()
     logger.info("Loading catalogue")
     dir = os.path.dirname(args.catalogue)
     catalogue = Table.read(args.catalogue)
