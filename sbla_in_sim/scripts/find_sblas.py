@@ -84,7 +84,6 @@ def main(cmdargs=None):
     logger.info(f"Catalogue loaded. Elapsed time: {(t1-t0)} seconds")
     logger.info(f"Number of spectra to analyse: {n_spectra}")
 
-    
     # loop over spectra
     logger.info("Finding SBLAs in spectra")
     sblas_table_all_list = []
@@ -109,8 +108,14 @@ def main(cmdargs=None):
 
     # save tables
     logger.info("Saving SBLA tables")
-    sblas_table_all.write(args.catalogue.replace(".fits","_sblas_all.fits"), overwrite=True)
-    sblas_table_reduced.write(args.catalogue.replace(".fits","_sblas_reduced.fits"), overwrite=True)
+    sblas_table_all_filename = args.catalogue.replace(".csv","_sblas_all.csv")
+    sblas_table_reduced_filename = args.catalogue.replace(".csv","_sblas_reduced.csv")
+    if sblas_table_all_filename == args.catalogue:
+        raise ValueError("Input catalogue filename must end with .csv to save SBLA tables.")
+    if sblas_table_reduced_filename == args.catalogue:
+        raise ValueError("Input catalogue filename must end with .csv to save SBLA tables.")    
+    sblas_table_all.write(sblas_table_all_filename, overwrite=True)
+    sblas_table_reduced.write(sblas_table_reduced_filename, overwrite=True)
     t4 = time.time()
     logger.info(f"SBLA tables saved. Elapsed time: {(t4-t3)/60.0} minutes")
 
