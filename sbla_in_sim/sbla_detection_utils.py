@@ -33,7 +33,7 @@ COLOR_DICT = {
 
 LYA_WL = 1215.67
 
-SBLA_THRESHOLD = -0.75
+SBLA_THRESHOLD = 0.25
 
 def find_sblas(transmission_file, plot=False):
     """Find SBLAs in a delta_file
@@ -77,17 +77,20 @@ def find_sblas(transmission_file, plot=False):
     if plot:
         figsize = (10, 5)
         fontsize = 14
+        titlefontsize = 8
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
     
         ax.set_title(
             f"Name: {transmission_file}",
-            fontsize=fontsize
+            fontsize=titlefontsize
         )
         ax.plot(wavelength, flux)
         xlim = ax.get_xlim()
         ax.hlines(-0.75, xlim[0], xlim[1], linestyle="dashed", color="k")
         ax.set_xlim(xlim)
+        ax.set_ylabel("Transmitted flux fraction", fontsize=fontsize)
+        ax.set_xlabel("Wavelength [Angstrom]", fontsize=fontsize)
 
     # loop over velocities
     for vel in VEL_LIST:
