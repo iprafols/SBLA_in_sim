@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 VEL_LIST = sorted( # in km/s
     #[54, 85, 112, 138, 170, 201, 233, 264, 295, 326, 358, 389, 420, 452, 483],
     [85, 112, 138, 170, 201, 233, 264, 295, 326, 358, 389, 420, 452, 483],
+    #[85, 112],
     reverse=True)
     
 COLOR_LIST = [
@@ -78,7 +79,7 @@ def find_sblas(transmission_file, name, plot=False):
 
     # plot the spectrum
     if plot:
-        figsize = (10, 5)
+        figsize = (15, 5)
         fontsize = 14
         titlefontsize = 8
         fig = plt.figure(figsize=figsize)
@@ -99,14 +100,14 @@ def find_sblas(transmission_file, name, plot=False):
     for vel in VEL_LIST:
 
         # rebin spectrum
-        rebin_wave, rebin_delta, rebin_weight, bins_mapping = rebin_spectrum(
+        rebin_wave, rebin_delta, _, bins_mapping = rebin_spectrum(
             flux, wavelength, weights, vel)
 
         # find pixels with SBLAs
         pos = np.where(rebin_delta < SBLA_THRESHOLD)
         if pos[0].size < 1:
             continue
-    
+
         # now we iterate over the found pixels to build the SBLA interval
         sblas_list = []
         # first pixel
@@ -131,26 +132,35 @@ def find_sblas(transmission_file, name, plot=False):
         
         # plot all SBLAs found for this velocity
         if plot:
-            item = found_sblas_all[vel][0]
-            _, ymax = ax.get_ylim()
-            ax.plot(item, [ymax]*item.size, color=COLOR_DICT[vel], label=f"{vel}km/s", linewidth=3)
-            for item in found_sblas_all[vel][1:]:
-                ax.plot(item, [ymax]*item.size, color=COLOR_DICT[vel], linewidth=3)
-    
+            if len(sblas_list) > 0:  # Check if there are SBLAs to plot
+                _, ymax = ax.get_ylim()
+
+                # Plot first SBLA with label using multiple visualization methods
+                item = sblas_list[0]
+                ax.scatter(item, [ymax]*item.size, 4, color=COLOR_DICT[vel], label=f"{vel}km/s", marker='s', alpha=1)
+                
+                # Plot remaining SBLAs without labels
+                for i, item in enumerate(sblas_list[1:], 1):
+                    ax.scatter(item, [ymax]*item.size, 4, color=COLOR_DICT[vel], marker='s', alpha=1)
+                    
     # now reduce the number of SBLA so that the larger SBLA eat the smaller ones
     found_sblas_reduced = reduce_intervals(found_sblas_all)
-    
+
     # plot the surviving SBLAs
     if plot:
         for vel, intervals in found_sblas_reduced.items():
             ymin, _ = ax.get_ylim()
+            
             if len(intervals) > 0:
+                # Plot first reduced SBLA with label using multiple methods
                 item = intervals[0]
-                ax.plot(item, [ymin]*item.size, color=COLOR_DICT[vel], label=f"surv. {vel}km/s", linewidth=3)
-                for item in intervals[1:]:
-                    ax.plot(item, [ymin]*item.size, color=COLOR_DICT[vel], linewidth=3)
-
-        fig.savefig(f"{transmission_file.replace('.fits.gz','_sblas.png')}")
+                ax.scatter(item, [ymin]*item.size, 4, color=COLOR_DICT[vel], label=f"surv. {vel}km/s", marker='s', alpha=1)
+                
+                # Plot remaining reduced SBLAs without labels
+                for i, item in enumerate(intervals[1:], 1):
+                    ax.scatter(item, [ymin]*item.size, 4, color=COLOR_DICT[vel], marker='s', alpha=1)
+                    
+        fig.savefig(f"{transmission_file.replace('.fits.gz','_sblas.png')}", bbox_inches='tight', dpi=150)
 
     # format full list of SBLAs  into the SBLA table
     for vel, intervals in found_sblas_all.items():
@@ -260,12 +270,26 @@ def reduce_intervals(sblas_pos):
                 print(v)
                 print(sblas_pos[v])
                 raise error
+            
             eaten = False
-            for larger_item in larger_intervals:
-                overlap = max(0, min(item[-1], larger_item[-1]) - max(item[0], larger_item[0]))
-                if overlap >= 0.5 * length_a:
-                    eaten = True
-                    break
+            
+            if length_a == 0:
+                # For single pixel SBLAs (length 0), only remove if the pixel 
+                # is completely inside a larger interval, not just overlapping
+                pixel_wavelength = item[0]  # Since length is 0, item[0] == item[-1]
+                for larger_item in larger_intervals:
+                    # Check if pixel falls strictly inside the larger interval
+                    if larger_item[0] <= pixel_wavelength <= larger_item[-1]:
+                        eaten = True
+                        break
+            else:
+                # For extended SBLAs, use the original overlap criterion
+                for larger_item in larger_intervals:
+                    overlap = max(0, min(item[-1], larger_item[-1]) - max(item[0], larger_item[0]))
+                    if overlap >= 0.5 * length_a:
+                        eaten = True
+                        break
+            
             if not eaten:
                 kept[v].append(item)
                 larger_intervals.append(item)
