@@ -165,6 +165,7 @@ def main(cmdargs=None):
         # generate noise distributions
         if config.noise_dist is not None:
             # draw noises from distribution
+            # Note: ndz_pdf column name is misleading - it's actually the normalized CDF (0-1)
             noise_data = np.genfromtxt(config.noise_dist, names=True, encoding="UTF-8")
             noise_from_prob = interp1d(noise_data["ndz_pdf"], noise_data["noise"])
             noise_probs = np.random.uniform(0.0, 1.0, size=config.num_rays)
