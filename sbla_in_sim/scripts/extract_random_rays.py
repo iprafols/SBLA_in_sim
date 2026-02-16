@@ -10,7 +10,6 @@ import os
 import time
 
 import numpy as np
-from scipy.interpolate import interp1d
 from astropy.table import Table
 
 from sbla_in_sim.config import Config
@@ -164,12 +163,59 @@ def main(cmdargs=None):
 
         # generate noise distributions
         if config.noise_dist is not None:
-            # TODO: draw noises
-            # This needs to be replaced
-            logger.warning("Noise distribution is not implemented yet. "
-                           "Setting noise to -1.0 (no noise) for all rays.")
-            noise = np.zeros_like(redshifts) -1.0
+            # draw noises from redshift-dependent distribution
+            # Load npz file with histogram2d results (ordering: redshift, mean_snr)
+            noise_data = np.load(config.noise_dist)
+            H = noise_data['H']  # 2D histogram counts [n_z_bins, n_snr_bins]
+            z_edges = noise_data['z_edges']  # redshift bin edges
+            snr_edges = noise_data['snr_edges']  # SNR bin edges (noise values)
+            
+            # Verify expected dimensions
+            if len(z_edges) != H.shape[0] + 1:
+                raise ValueError(
+                    f"Inconsistent dimensions: z_edges has {len(z_edges)} elements "
+                    f"but H has {H.shape[0]} redshift bins. Expected {H.shape[0] + 1} edges.")
+            if len(snr_edges) != H.shape[1] + 1:
+                raise ValueError(
+                    f"Inconsistent dimensions: snr_edges has {len(snr_edges)} elements "
+                    f"but H has {H.shape[1]} SNR bins. Expected {H.shape[1] + 1} edges.")
+            
+            # Calculate bin centers for noise values (mean SNR)
+            noise_centers = (snr_edges[:-1] + snr_edges[1:]) / 2
+            
+            # Find redshift bin for each ray
+            # np.digitize returns 0 for z < z_edges[0] and len(z_edges) for z >= z_edges[-1]
+            z_bins = np.digitize(redshifts, z_edges) - 1
+            
+            # Explicitly handle edge cases
+            # Clamp redshifts below minimum to first bin
+            z_bins[z_bins < 0] = 0
+            # Clamp redshifts above maximum to last bin
+            z_bins[z_bins >= H.shape[0]] = H.shape[0] - 1
+            
+            # Sample noise for each ray based on its redshift bin
+            # Vectorize by processing all rays in the same bin together
+            # Initialize with -1.0 to indicate "no noise" (convention: noise <= 0 means no noise)
+            noise = np.full_like(redshifts, -1.0)
+            for z_bin_idx in range(H.shape[0]):
+                # Find all rays in this redshift bin
+                rays_in_bin = np.where(z_bins == z_bin_idx)[0]
+                if len(rays_in_bin) == 0:
+                    continue
+                
+                # Get the noise distribution for this redshift bin
+                noise_distribution = H[z_bin_idx, :]
+                
+                # Normalize to create probability distribution
+                if noise_distribution.sum() > 0:
+                    noise_probs = noise_distribution / noise_distribution.sum()
+                    # Sample noise bins for all rays in this bin at once
+                    noise_bins = np.random.choice(
+                        len(noise_centers), size=len(rays_in_bin), p=noise_probs)
+                    noise[rays_in_bin] = noise_centers[noise_bins]
+                # else: keep default -1.0 (no noise) for rays in empty bins
         else:
+            # No noise distribution provided - use -1.0 to indicate no noise should be applied
             noise = np.zeros_like(redshifts) -1.0
 
         # choose snapshots
