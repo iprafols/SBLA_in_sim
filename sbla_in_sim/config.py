@@ -377,6 +377,8 @@ class Config:
         if self.rays_base_name is None:  # pragma: no cover
             raise ConfigError(
                 "Missing variable 'rays base name' in section [random rays]")
+        
+        self.noise_dist = section.get("noise dist")
 
     def __parse_environ_variables(self):
         """Read all variables and replaces the enviroment variables for their

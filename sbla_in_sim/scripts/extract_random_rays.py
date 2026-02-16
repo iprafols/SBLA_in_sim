@@ -164,11 +164,11 @@ def main(cmdargs=None):
 
         # generate noise distributions
         if config.noise_dist is not None:
-            # TODO: draw noises
-            # This needs to be replaced
-            logger.warning("Noise distribution is not implemented yet. "
-                           "Setting noise to -1.0 (no noise) for all rays.")
-            noise = np.zeros_like(redshifts) -1.0
+            # draw noises from distribution
+            noise_data = np.genfromtxt(config.noise_dist, names=True, encoding="UTF-8")
+            noise_from_prob = interp1d(noise_data["ndz_pdf"], noise_data["noise"])
+            noise_probs = np.random.uniform(0.0, 1.0, size=config.num_rays)
+            noise = noise_from_prob(noise_probs)
         else:
             noise = np.zeros_like(redshifts) -1.0
 
