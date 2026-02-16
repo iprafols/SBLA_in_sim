@@ -170,29 +170,51 @@ def main(cmdargs=None):
             z_edges = noise_data['z_edges']  # redshift bin edges
             snr_edges = noise_data['snr_edges']  # SNR bin edges (noise values)
             
+            # Verify expected dimensions
+            if len(z_edges) != H.shape[0] + 1:
+                raise ValueError(
+                    f"Inconsistent dimensions: z_edges has {len(z_edges)} elements "
+                    f"but H has {H.shape[0]} redshift bins. Expected {H.shape[0] + 1} edges.")
+            if len(snr_edges) != H.shape[1] + 1:
+                raise ValueError(
+                    f"Inconsistent dimensions: snr_edges has {len(snr_edges)} elements "
+                    f"but H has {H.shape[1]} SNR bins. Expected {H.shape[1] + 1} edges.")
+            
             # Calculate bin centers for SNR
             snr_centers = (snr_edges[:-1] + snr_edges[1:]) / 2
             
-            # Sample noise for each ray based on its redshift
+            # Find redshift bin for each ray
+            # np.digitize returns 0 for z < z_edges[0] and len(z_edges) for z >= z_edges[-1]
+            z_bins = np.digitize(redshifts, z_edges) - 1
+            
+            # Explicitly handle edge cases
+            # Clamp redshifts below minimum to first bin
+            z_bins[z_bins < 0] = 0
+            # Clamp redshifts above maximum to last bin
+            z_bins[z_bins >= H.shape[0]] = H.shape[0] - 1
+            
+            # Sample noise for each ray based on its redshift bin
+            # Vectorize by processing all rays in the same bin together
             noise = np.zeros_like(redshifts)
-            for i, z in enumerate(redshifts):
-                # Find which redshift bin this ray falls into
-                z_bin = np.digitize(z, z_edges) - 1
-                # Clamp to valid range
-                z_bin = np.clip(z_bin, 0, H.shape[0] - 1)
+            for z_bin_idx in range(H.shape[0]):
+                # Find all rays in this redshift bin
+                rays_in_bin = np.where(z_bins == z_bin_idx)[0]
+                if len(rays_in_bin) == 0:
+                    continue
                 
                 # Get the noise distribution for this redshift bin
-                snr_distribution = H[z_bin, :]
+                snr_distribution = H[z_bin_idx, :]
                 
                 # Normalize to create probability distribution
                 if snr_distribution.sum() > 0:
                     snr_probs = snr_distribution / snr_distribution.sum()
-                    # Sample a noise bin according to the distribution
-                    noise_bin = np.random.choice(len(snr_centers), p=snr_probs)
-                    noise[i] = snr_centers[noise_bin]
+                    # Sample noise bins for all rays in this bin at once
+                    noise_bins = np.random.choice(
+                        len(snr_centers), size=len(rays_in_bin), p=snr_probs)
+                    noise[rays_in_bin] = snr_centers[noise_bins]
                 else:
                     # If no data for this redshift bin, use -1.0 (no noise)
-                    noise[i] = -1.0
+                    noise[rays_in_bin] = -1.0
         else:
             noise = np.zeros_like(redshifts) -1.0
 
