@@ -180,8 +180,8 @@ def main(cmdargs=None):
                     f"Inconsistent dimensions: snr_edges has {len(snr_edges)} elements "
                     f"but H has {H.shape[1]} SNR bins. Expected {H.shape[1] + 1} edges.")
             
-            # Calculate bin centers for SNR
-            snr_centers = (snr_edges[:-1] + snr_edges[1:]) / 2
+            # Calculate bin centers for noise values (mean SNR)
+            noise_centers = (snr_edges[:-1] + snr_edges[1:]) / 2
             
             # Find redshift bin for each ray
             # np.digitize returns 0 for z < z_edges[0] and len(z_edges) for z >= z_edges[-1]
@@ -195,7 +195,8 @@ def main(cmdargs=None):
             
             # Sample noise for each ray based on its redshift bin
             # Vectorize by processing all rays in the same bin together
-            noise = np.zeros_like(redshifts)
+            # Initialize with -1.0 to indicate "no noise" (convention: noise <= 0 means no noise)
+            noise = np.full_like(redshifts, -1.0)
             for z_bin_idx in range(H.shape[0]):
                 # Find all rays in this redshift bin
                 rays_in_bin = np.where(z_bins == z_bin_idx)[0]
@@ -203,19 +204,18 @@ def main(cmdargs=None):
                     continue
                 
                 # Get the noise distribution for this redshift bin
-                snr_distribution = H[z_bin_idx, :]
+                noise_distribution = H[z_bin_idx, :]
                 
                 # Normalize to create probability distribution
-                if snr_distribution.sum() > 0:
-                    snr_probs = snr_distribution / snr_distribution.sum()
+                if noise_distribution.sum() > 0:
+                    noise_probs = noise_distribution / noise_distribution.sum()
                     # Sample noise bins for all rays in this bin at once
                     noise_bins = np.random.choice(
-                        len(snr_centers), size=len(rays_in_bin), p=snr_probs)
-                    noise[rays_in_bin] = snr_centers[noise_bins]
-                else:
-                    # If no data for this redshift bin, use -1.0 (no noise)
-                    noise[rays_in_bin] = -1.0
+                        len(noise_centers), size=len(rays_in_bin), p=noise_probs)
+                    noise[rays_in_bin] = noise_centers[noise_bins]
+                # else: keep default -1.0 (no noise) for rays in empty bins
         else:
+            # No noise distribution provided - use -1.0 to indicate no noise should be applied
             noise = np.zeros_like(redshifts) -1.0
 
         # choose snapshots
