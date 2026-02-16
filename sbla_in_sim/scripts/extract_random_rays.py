@@ -10,7 +10,6 @@ import os
 import time
 
 import numpy as np
-from scipy.interpolate import interp1d
 from astropy.table import Table
 
 from sbla_in_sim.config import Config
@@ -164,12 +163,36 @@ def main(cmdargs=None):
 
         # generate noise distributions
         if config.noise_dist is not None:
-            # draw noises from distribution
-            # Note: ndz_pdf column name is misleading - it's actually the normalized CDF (0-1)
-            noise_data = np.genfromtxt(config.noise_dist, names=True, encoding="UTF-8")
-            noise_from_prob = interp1d(noise_data["ndz_pdf"], noise_data["noise"])
-            noise_probs = np.random.uniform(0.0, 1.0, size=config.num_rays)
-            noise = noise_from_prob(noise_probs)
+            # draw noises from redshift-dependent distribution
+            # Load npz file with histogram2d results (ordering: redshift, mean_snr)
+            noise_data = np.load(config.noise_dist)
+            H = noise_data['H']  # 2D histogram counts [n_z_bins, n_snr_bins]
+            z_edges = noise_data['z_edges']  # redshift bin edges
+            snr_edges = noise_data['snr_edges']  # SNR bin edges (noise values)
+            
+            # Calculate bin centers for SNR
+            snr_centers = (snr_edges[:-1] + snr_edges[1:]) / 2
+            
+            # Sample noise for each ray based on its redshift
+            noise = np.zeros_like(redshifts)
+            for i, z in enumerate(redshifts):
+                # Find which redshift bin this ray falls into
+                z_bin = np.digitize(z, z_edges) - 1
+                # Clamp to valid range
+                z_bin = np.clip(z_bin, 0, H.shape[0] - 1)
+                
+                # Get the noise distribution for this redshift bin
+                snr_distribution = H[z_bin, :]
+                
+                # Normalize to create probability distribution
+                if snr_distribution.sum() > 0:
+                    snr_probs = snr_distribution / snr_distribution.sum()
+                    # Sample a noise bin according to the distribution
+                    noise_bin = np.random.choice(len(snr_centers), p=snr_probs)
+                    noise[i] = snr_centers[noise_bin]
+                else:
+                    # If no data for this redshift bin, use -1.0 (no noise)
+                    noise[i] = -1.0
         else:
             noise = np.zeros_like(redshifts) -1.0
 
