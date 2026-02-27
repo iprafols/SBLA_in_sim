@@ -9,8 +9,9 @@ import multiprocessing
 import os
 import time
 
-import numpy as np
 from astropy.table import Table
+import numpy as np
+from scipy.interpolate import interp1d, RegularGridInterpolator
 
 from sbla_in_sim.config import Config
 from sbla_in_sim.random_rays import (
@@ -160,7 +161,19 @@ def main(cmdargs=None):
             rho, theta_e, theta_r, phi_r, 3*snapshots_rho_max)
         start_shifts = np.vstack([x_start, y_start, z_start]).transpose()
         end_shifts = np.vstack([x_end, y_end, z_end]).transpose()
-
+            
+        # choose snapshots
+        choices = [
+            select_snapshot(z_aux, rho_aux, snapshots)
+            for z_aux, rho_aux in zip(redshifts, rho)]
+        snapshot_names = snapshots["name"][choices]
+        galaxy_position_x = snapshots["galaxy_pos_x"][choices]
+        galaxy_position_y = snapshots["galaxy_pos_y"][choices]
+        galaxy_position_z = snapshots["galaxy_pos_z"][choices]
+        galaxy_positions = np.vstack([galaxy_position_x,
+                                      galaxy_position_y,
+                                      galaxy_position_z]).transpose()
+        
         # generate noise distributions
         if config.noise_dist is not None:
             # draw noises from redshift-dependent distribution
@@ -180,55 +193,37 @@ def main(cmdargs=None):
                     f"Inconsistent dimensions: snr_edges has {len(snr_edges)} elements "
                     f"but H has {H.shape[1]} SNR bins. Expected {H.shape[1] + 1} edges.")
             
-            # Calculate bin centers for noise values (mean SNR)
+            # Calculate bin centers for redshift and noise values (mean SNR)
+            z_centers = (z_edges[:-1] + z_edges[1:]) / 2
             noise_centers = (snr_edges[:-1] + snr_edges[1:]) / 2
             
-            # Find redshift bin for each ray
-            # np.digitize returns 0 for z < z_edges[0] and len(z_edges) for z >= z_edges[-1]
-            z_bins = np.digitize(redshifts, z_edges) - 1
+            # Create RegularGridInterpolator for the noise distribution
+            # This interpolates the 2D histogram to get probabilities at any (z, noise) point
+            noise_interpolator = RegularGridInterpolator(
+                (z_centers, noise_centers), H, 
+                bounds_error=False, fill_value=0.0)
             
-            # Explicitly handle edge cases
-            # Clamp redshifts below minimum to first bin
-            z_bins[z_bins < 0] = 0
-            # Clamp redshifts above maximum to last bin
-            z_bins[z_bins >= H.shape[0]] = H.shape[0] - 1
-            
-            # Sample noise for each ray based on its redshift bin
-            # Vectorize by processing all rays in the same bin together
-            # Initialize with -1.0 to indicate "no noise" (convention: noise <= 0 means no noise)
+            # Initialize noise array with -1.0 to indicate "no noise"
             noise = np.full_like(redshifts, -1.0)
-            for z_bin_idx in range(H.shape[0]):
-                # Find all rays in this redshift bin
-                rays_in_bin = np.where(z_bins == z_bin_idx)[0]
-                if len(rays_in_bin) == 0:
-                    continue
+            
+            # For each ray, sample noise from the interpolated distribution at its redshift
+            for i, z in enumerate(redshifts):
+                # Clamp redshift to valid range
+                z_clamped = np.clip(z, z_centers[0], z_centers[-1])
                 
-                # Get the noise distribution for this redshift bin
-                noise_distribution = H[z_bin_idx, :]
+                # Evaluate interpolated distribution at this redshift across all noise values
+                points = np.column_stack([np.full_like(noise_centers, z_clamped), noise_centers])
+                noise_distribution = noise_interpolator(points)
                 
                 # Normalize to create probability distribution
                 if noise_distribution.sum() > 0:
                     noise_probs = noise_distribution / noise_distribution.sum()
-                    # Sample noise bins for all rays in this bin at once
-                    noise_bins = np.random.choice(
-                        len(noise_centers), size=len(rays_in_bin), p=noise_probs)
-                    noise[rays_in_bin] = noise_centers[noise_bins]
-                # else: keep default -1.0 (no noise) for rays in empty bins
+                    # Sample a noise value from the distribution
+                    noise[i] = np.random.choice(noise_centers, p=noise_probs)
+                
         else:
             # No noise distribution provided - use -1.0 to indicate no noise should be applied
             noise = np.zeros_like(redshifts) -1.0
-
-        # choose snapshots
-        choices = [
-            select_snapshot(z_aux, rho_aux, snapshots)
-            for z_aux, rho_aux in zip(redshifts, rho)]
-        snapshot_names = snapshots["name"][choices]
-        galaxy_position_x = snapshots["galaxy_pos_x"][choices]
-        galaxy_position_y = snapshots["galaxy_pos_y"][choices]
-        galaxy_position_z = snapshots["galaxy_pos_z"][choices]
-        galaxy_positions = np.vstack([galaxy_position_x,
-                                      galaxy_position_y,
-                                      galaxy_position_z]).transpose()
 
         # get the simulation names
         names = np.array([
