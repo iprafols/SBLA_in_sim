@@ -241,10 +241,11 @@ def run_simple_ray(ds,
         ray,
         lines='all',
         store_observables=True)
-    spec_gen.save_spectrum(
-        f"{output_dir}{base_name}_spec_nonoise.fits.gz",
-        format="FITS")
-    if noise > 0.0:
+    if noise == -1.0
+        spec_gen.save_spectrum(
+            f"{output_dir}{base_name}_spec_nonoise.fits.gz",
+            format="FITS")
+    elif noise > 0.0:
         spec_gen.add_gaussian_noise(noise)
         spec_gen.save_spectrum(
             f"{output_dir}{base_name}_spec.fits.gz",
