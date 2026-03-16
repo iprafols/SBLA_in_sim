@@ -84,12 +84,14 @@ def main(cmdargs=None):
 
         # select the entries that were not previously run
         not_run_mask = np.array([
-            not (os.path.isfile(os.path.join(config.output_dir, 
-                                             entry["name"]+"_spec_nonoise.fits.gz")) 
-                 and (entry["noise"] < 0.0 or 
-                      os.path.isfile(os.path.join(config.output_dir, 
-                                                  entry["name"]+"_spec.fits.gz"))
-                      )
+            not (
+                (entry["input_snr"] < 0.0 and os.path.isfile(os.path.join(config.output_dir,
+                                                             entry["name"]+"_spec_nonoise.fits.gz"))
+                )
+                or
+                (entry["input_snr"] > 0.0 and os.path.isfile(os.path.join(config.output_dir,
+                                                             entry["name"]+"_spec.fits.gz"))
+                )
                 )
             for entry in catalogue
         ])
@@ -100,7 +102,7 @@ def main(cmdargs=None):
         snapshot_names = not_run_catalogue["snapshot_name"]
         redshifts = not_run_catalogue["z"]
         names = not_run_catalogue["name"]
-        noise = not_run_catalogue["noise"]
+        snr = not_run_catalogue["input_snr"]
         start_shifts = np.vstack([
             not_run_catalogue["start_shift_x"],
             not_run_catalogue["start_shift_y"],
@@ -174,14 +176,14 @@ def main(cmdargs=None):
                                       galaxy_position_y,
                                       galaxy_position_z]).transpose()
         
-        # generate noise distributions
+        # generate SNR distributions
         if config.noise_dist is not None:
-            # draw noises from redshift-dependent distribution
+            # draw snr from redshift-dependent distribution
             # Load npz file with histogram2d results (ordering: redshift, mean_snr)
-            noise_data = np.load(config.noise_dist)
-            H = noise_data['H']  # 2D histogram counts [n_z_bins, n_snr_bins]
-            z_edges = noise_data['z_edges']  # redshift bin edges
-            snr_edges = noise_data['snr_edges']  # SNR bin edges (noise values)
+            snr_data = np.load(config.snr_dist)
+            H = snr_data['H']  # 2D histogram counts [n_z_bins, n_snr_bins]
+            z_edges = snr_data['z_edges']  # redshift bin edges
+            snr_edges = snr_data['snr_edges']  # SNR bin edges 
             
             # Verify expected dimensions
             if len(z_edges) != H.shape[0] + 1:
@@ -193,37 +195,37 @@ def main(cmdargs=None):
                     f"Inconsistent dimensions: snr_edges has {len(snr_edges)} elements "
                     f"but H has {H.shape[1]} SNR bins. Expected {H.shape[1] + 1} edges.")
             
-            # Calculate bin centers for redshift and noise values (mean SNR)
+            # Calculate bin centers for redshift and SNR values (mean SNR)
             z_centers = (z_edges[:-1] + z_edges[1:]) / 2
-            noise_centers = (snr_edges[:-1] + snr_edges[1:]) / 2
+            snr_centers = (snr_edges[:-1] + snr_edges[1:]) / 2
             
-            # Create RegularGridInterpolator for the noise distribution
-            # This interpolates the 2D histogram to get probabilities at any (z, noise) point
-            noise_interpolator = RegularGridInterpolator(
-                (z_centers, noise_centers), H, 
+            # Create RegularGridInterpolator for the SNR distribution
+            # This interpolates the 2D histogram to get probabilities at any (z, snr) point
+            snr_interpolator = RegularGridInterpolator(
+                (z_centers, snr_centers), H, 
                 bounds_error=False, fill_value=0.0)
             
-            # Initialize noise array with -1.0 to indicate "no noise"
-            noise = np.full_like(redshifts, -1.0)
+            # Initialize SNR array with -1.0 to indicate "no noise"
+            snr = np.full_like(redshifts, -1.0)
             
-            # For each ray, sample noise from the interpolated distribution at its redshift
+            # For each ray, sample SNR from the interpolated distribution at its redshift
             for i, z in enumerate(redshifts):
                 # Clamp redshift to valid range
                 z_clamped = np.clip(z, z_centers[0], z_centers[-1])
                 
-                # Evaluate interpolated distribution at this redshift across all noise values
-                points = np.column_stack([np.full_like(noise_centers, z_clamped), noise_centers])
-                noise_distribution = noise_interpolator(points)
+                # Evaluate interpolated distribution at this redshift across all SNR values
+                points = np.column_stack([np.full_like(snr_centers, z_clamped), snr_centers])
+                snr_distribution = snr_interpolator(points)
                 
                 # Normalize to create probability distribution
-                if noise_distribution.sum() > 0:
-                    noise_probs = noise_distribution / noise_distribution.sum()
-                    # Sample a noise value from the distribution
-                    noise[i] = np.random.choice(noise_centers, p=noise_probs)
+                if snr_distribution.sum() > 0:
+                    snr_probs = snr_distribution / snr_distribution.sum()
+                    # Sample a SNR value from the distribution
+                    snr[i] = np.random.choice(snr_centers, p=snr_probs)
                 
         else:
-            # No noise distribution provided - use -1.0 to indicate no noise should be applied
-            noise = np.zeros_like(redshifts) -1.0
+            # No SNR distribution provided - use -1.0 to indicate no SNR should be applied
+            snr = np.zeros_like(redshifts) -1.0
 
         # get the simulation names
         names = np.array([
@@ -258,7 +260,7 @@ def main(cmdargs=None):
             "gal_pos_x": galaxy_position_x,
             "gal_pos_y": galaxy_position_y,
             "gal_pos_z": galaxy_position_z,
-            "noise": noise,
+            "input_snr": snr,
         })
         catalogue.write(os.path.join(config.output_dir, config.output_catalogue))
 
@@ -281,7 +283,7 @@ def main(cmdargs=None):
                 galaxy_positions[pos],
                 names[pos],
                 repeat(config.output_dir),
-                noise[pos])
+                snr[pos])
 
             pool.starmap(run_simple_ray, arguments)
 

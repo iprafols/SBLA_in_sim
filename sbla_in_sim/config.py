@@ -35,7 +35,7 @@ ACCEPTED_GENERAL_OPTIONS = [
 ]
 
 ACCEPTED_RANDOM_RAYS_OPTIONS = [
-    "noise distribution", "num rays", "random seed", 
+    "snr distribution", "num rays", "random seed", 
     "rays base name", "snapshots", "snapshots dir", "z distribution",
 ]
 
@@ -186,7 +186,7 @@ class Config:
         self.log_level_yt = None
         self.__format_logging_section()
 
-        self.noise_dist = None
+        self.snr_dist = None
         self.num_rays = None
         self.random_seed = None
         self.rays_base_name = None
@@ -378,7 +378,7 @@ class Config:
             raise ConfigError(
                 "Missing variable 'rays base name' in section [random rays]")
         
-        self.noise_dist = section.get("noise distribution")
+        self.snr_dist = section.get("snr distribution")
 
     def __parse_environ_variables(self):
         """Read all variables and replaces the enviroment variables for their

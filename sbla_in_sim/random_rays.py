@@ -182,7 +182,7 @@ def run_simple_ray(ds,
                    galaxy_pos,
                    base_name,
                    output_dir,
-                   noise):
+                   snr):
     """Run a simple ray from a specified start and end shifts from the centre
     of a galaxy
 
@@ -213,8 +213,8 @@ def run_simple_ray(ds,
     output_dir: str
     Directory where outputs are saved
 
-    noise: float
-    The noise to be applied to the spectrum
+    snr: float
+    The signal-to-noise ratio to be applied to the spectrum
     """
     start = galaxy_pos[:] + start_shift
     end = galaxy_pos[:] + end_shift
@@ -241,12 +241,13 @@ def run_simple_ray(ds,
         ray,
         lines='all',
         store_observables=True)
-    if noise == -1.0
+    if snr == -1.0:
         spec_gen.save_spectrum(
             f"{output_dir}{base_name}_spec_nonoise.fits.gz",
             format="FITS")
-    elif noise > 0.0:
-        spec_gen.add_gaussian_noise(noise)
+    elif snr > 0.0:
+        spec_gen.add_gaussian_noise(snr)
+        spec_gen.snr = snr*snr # to be able to recover the snr from the flux error in the output spectrum
         spec_gen.save_spectrum(
             f"{output_dir}{base_name}_spec.fits.gz",
             format="FITS")
