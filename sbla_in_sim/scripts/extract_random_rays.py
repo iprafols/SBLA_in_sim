@@ -177,7 +177,7 @@ def main(cmdargs=None):
                                       galaxy_position_z]).transpose()
         
         # generate SNR distributions
-        if config.noise_dist is not None:
+        if config.snr_dist is not None:
             # draw snr from redshift-dependent distribution
             # Load npz file with histogram2d results (ordering: redshift, mean_snr)
             snr_data = np.load(config.snr_dist)
