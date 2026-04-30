@@ -381,8 +381,9 @@ class Config:
         if self.num_rays is None: # pragma: no cover
             raise ConfigError("Missing variable 'num rays' in section [random rays]")
         
-        # qso_mag_dist is now optional - if not provided, uniform distribution (16.6, 23.1) is used
         self.qso_mag_dist = section.get("qso mag distribution")
+        if self.qso_mag_dist is None:
+            raise ConfigError("Missing variable 'qso mag distribution' in section [random rays]")
         
         self.qso_z_dist = section.get("qso z distribution")
         if self.qso_z_dist is None:
