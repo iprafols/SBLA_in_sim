@@ -32,10 +32,12 @@ COLOR_DICT = {
 }
 
 LYA_WL = 1215.67
+LAMBDA_QSO_RF_MIN = 1040
+LAMBDA_QSO_RF_MAX = 1205
 
 SBLA_THRESHOLD = 0.25
 
-def find_sblas(transmission_file, name, plot=False):
+def find_sblas(transmission_file, name, z_qso, plot=False):
     """Find SBLAs in a delta_file
     
     Arguments
@@ -45,6 +47,10 @@ def find_sblas(transmission_file, name, plot=False):
 
     name: str
     Name identifier for the spectrum
+
+    z_qso: float
+    Redshift of the background quasar, used to compute the rest-frame wavelength and identify the
+    Lyman-alpha forest region where to find SBLAs.
 
     plot: boolean - Default: False
     If True, plot the spectra and the found SBLAs.
@@ -58,11 +64,11 @@ def find_sblas(transmission_file, name, plot=False):
     Table with the reduced set of SBLAs
     """
     hdu = fits.open(transmission_file)
-    wavelength = hdu[1].data["wavelength"]
-    flux = hdu[1].data["flux"]
-    weights = 1/(hdu[1].data["flux_error"]**2 + 0.05)
+    wavelength = hdu[1].data["WAVELENGTH"]
+    flux = hdu[1].data["FLUX"]
+    weights = hdu[1].data["IVAR"]
     hdu.close()
-    
+
     sblas_table_all = Table(
         names=("name", "lambda_abs", "vel_sbla", "lambda_min", "lambda_max", "z"),
         dtype=("U50", ">f4", ">f4", ">f4", ">f4", ">f4"),
@@ -79,11 +85,15 @@ def find_sblas(transmission_file, name, plot=False):
 
     # plot the spectrum
     if plot:
-        figsize = (15, 5)
+        figsize = (15, 10)
         fontsize = 14
         titlefontsize = 8
+        ncols = 1
+        nrows = 2
         fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111)
+        gs = fig.add_gridspec(ncols=ncols, nrows=nrows)
+        ax = fig.add_subplot(gs[0])
+        ax_zoom = fig.add_subplot(gs[1])
     
         ax.set_title(
             f"Name: {name}",
@@ -96,15 +106,26 @@ def find_sblas(transmission_file, name, plot=False):
         ax.set_ylabel("Transmitted flux fraction", fontsize=fontsize)
         ax.set_xlabel("Wavelength [Angstrom]", fontsize=fontsize)
 
+        qso_rf_wavelength = wavelength / (1 + z_qso)
+        forest_pos = np.where((qso_rf_wavelength >= LAMBDA_QSO_RF_MIN) & (qso_rf_wavelength <= LAMBDA_QSO_RF_MAX))  
+        ax_zoom.plot(wavelength[forest_pos], flux[forest_pos])
+        xlim = ax_zoom.get_xlim()
+        ax_zoom.hlines(SBLA_THRESHOLD, xlim[0], xlim[1], linestyle="dashed", color="k")
+        ax_zoom.set_xlim(xlim)
+        ax_zoom.set_ylabel("Transmitted flux fraction", fontsize=fontsize)
+        ax_zoom.set_xlabel("Wavelength [Angstrom]", fontsize=fontsize)
+
     # loop over velocities
     for vel in VEL_LIST:
 
         # rebin spectrum
         rebin_wave, rebin_delta, _, bins_mapping = rebin_spectrum(
             flux, wavelength, weights, vel)
+        
+        qso_rf_wavelength = rebin_wave / (1 + z_qso)
 
         # find pixels with SBLAs
-        pos = np.where(rebin_delta < SBLA_THRESHOLD)
+        pos = np.where((rebin_delta < SBLA_THRESHOLD) & (qso_rf_wavelength >= LAMBDA_QSO_RF_MIN) & (qso_rf_wavelength <= LAMBDA_QSO_RF_MAX))
         if pos[0].size < 1:
             continue
 
@@ -134,14 +155,17 @@ def find_sblas(transmission_file, name, plot=False):
         if plot:
             if len(sblas_list) > 0:  # Check if there are SBLAs to plot
                 _, ymax = ax.get_ylim()
+                _, ymax_zoom = ax_zoom.get_ylim()
 
                 # Plot first SBLA with label using multiple visualization methods
                 item = sblas_list[0]
                 ax.scatter(item, [ymax]*item.size, 4, color=COLOR_DICT[vel], label=f"{vel}km/s", marker='s', alpha=1)
+                ax_zoom.scatter(item, [ymax_zoom]*item.size, 4, color=COLOR_DICT[vel], label=f"{vel}km/s", marker='s', alpha=1)
                 
                 # Plot remaining SBLAs without labels
                 for i, item in enumerate(sblas_list[1:], 1):
                     ax.scatter(item, [ymax]*item.size, 4, color=COLOR_DICT[vel], marker='s', alpha=1)
+                    ax_zoom.scatter(item, [ymax_zoom]*item.size, 4, color=COLOR_DICT[vel], marker='s', alpha=1)
                     
     # now reduce the number of SBLA so that the larger SBLA eat the smaller ones
     found_sblas_reduced = reduce_intervals(found_sblas_all)
@@ -150,15 +174,18 @@ def find_sblas(transmission_file, name, plot=False):
     if plot:
         for vel, intervals in found_sblas_reduced.items():
             ymin, _ = ax.get_ylim()
+            ymin_zoom, _ = ax_zoom.get_ylim()
             
             if len(intervals) > 0:
                 # Plot first reduced SBLA with label using multiple methods
                 item = intervals[0]
                 ax.scatter(item, [ymin]*item.size, 4, color=COLOR_DICT[vel], label=f"surv. {vel}km/s", marker='s', alpha=1)
+                ax_zoom.scatter(item, [ymin_zoom]*item.size, 4, color=COLOR_DICT[vel], label=f"surv. {vel}km/s", marker='s', alpha=1)
                 
                 # Plot remaining reduced SBLAs without labels
                 for i, item in enumerate(intervals[1:], 1):
                     ax.scatter(item, [ymin]*item.size, 4, color=COLOR_DICT[vel], marker='s', alpha=1)
+                    ax_zoom.scatter(item, [ymin_zoom]*item.size, 4, color=COLOR_DICT[vel], marker='s', alpha=1)
                     
         fig.savefig(f"{transmission_file.replace('.fits.gz','_sblas.png')}", bbox_inches='tight', dpi=150)
 

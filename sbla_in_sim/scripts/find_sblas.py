@@ -26,6 +26,10 @@ def process_spectrum(args_tuple):
     name: str
     The name of the spectrum (used for plotting)
 
+    z_qso: float
+    The redshift of the background quasar, used to compute the rest-frame wavelength and identify
+    the Lyman-alpha forest region where to find SBLAs.
+
     plot: bool
     Whether to plot the spectrum with the found SBLAs
         
@@ -43,10 +47,10 @@ def process_spectrum(args_tuple):
     error: str or None
     Error message if an error occurred, otherwise None
     """
-    index_spectrum, transmission_file, name, plot = args_tuple
+    index_spectrum, transmission_file, name, z_qso, plot = args_tuple
     
     try:
-        sblas_table_all, sblas_table_reduced = find_sblas(transmission_file, name, plot=plot)
+        sblas_table_all, sblas_table_reduced = find_sblas(transmission_file, name, z_qso, plot=plot)
         return (index_spectrum, sblas_table_all, sblas_table_reduced, None)
     except Exception as e:
         # Return the error information so we can handle it in the main process
@@ -125,7 +129,8 @@ def main(cmdargs=None):
     t0 = time.time()
     logger.info("Loading catalogue")
     dir = os.path.dirname(args.catalogue)
-    catalogue = Table.read(args.catalogue)
+    converters = {'noise': bool}
+    catalogue = Table.read(args.catalogue, converters=converters)
     n_spectra = len(catalogue)
 
     t1 = time.time()
@@ -142,12 +147,13 @@ def main(cmdargs=None):
     logger.info("Preparing tasks for parallel processing")
     tasks = []
     for index_spectrum in range(n_spectra):
-        if catalogue["input_snr"][index_spectrum] < 0:
-            transmission_file = os.path.join(dir, f"{catalogue['name'][index_spectrum]}_spec_nonoise.fits.gz")
-        else:
+        if catalogue["noise"][index_spectrum]:
             transmission_file = os.path.join(dir, f"{catalogue['name'][index_spectrum]}_spec.fits.gz")
+        else:
+            transmission_file = os.path.join(dir, f"{catalogue['name'][index_spectrum]}_spec_nonoise.fits.gz")
         name = catalogue['name'][index_spectrum]
-        tasks.append((index_spectrum, transmission_file, name, args.plot))
+        z_qso = catalogue['z_qso'][index_spectrum]
+        tasks.append((index_spectrum, transmission_file, name, z_qso, args.plot))
 
     # Process spectra in parallel
     logger.info("Finding SBLAs in spectra using multiprocessing")
