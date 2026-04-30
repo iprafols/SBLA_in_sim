@@ -79,17 +79,19 @@ def main(cmdargs=None):
         logger.info("Loading catalogue")
         t1_0 = time.time()
 
-        # load catalogue
-        catalogue = Table.read(os.path.join(config.output_dir, config.output_catalogue))
+        # load catalogue with noise column as boolean
+        converters = {'noise': bool}
+        catalogue = Table.read(os.path.join(config.output_dir, config.output_catalogue), 
+                              converters=converters)
 
         # select the entries that were not previously run
         not_run_mask = np.array([
             not (
-                (entry["input_snr"] < 0.0 and os.path.isfile(os.path.join(config.output_dir,
+                (not entry["noise"] and os.path.isfile(os.path.join(config.output_dir,
                                                              entry["name"]+"_spec_nonoise.fits.gz"))
                 )
                 or
-                (entry["input_snr"] > 0.0 and os.path.isfile(os.path.join(config.output_dir,
+                (entry["noise"] and os.path.isfile(os.path.join(config.output_dir,
                                                              entry["name"]+"_spec.fits.gz"))
                 )
                 )
@@ -102,7 +104,9 @@ def main(cmdargs=None):
         snapshot_names = not_run_catalogue["snapshot_name"]
         redshifts = not_run_catalogue["z"]
         names = not_run_catalogue["name"]
-        snr = not_run_catalogue["input_snr"]
+        z_qso = not_run_catalogue["z_qso"]
+        qso_mag = not_run_catalogue["qso_mag"]
+        noise = not_run_catalogue["noise"]
         start_shifts = np.vstack([
             not_run_catalogue["start_shift_x"],
             not_run_catalogue["start_shift_y"],
@@ -176,56 +180,74 @@ def main(cmdargs=None):
                                       galaxy_position_y,
                                       galaxy_position_z]).transpose()
         
-        # generate SNR distributions
-        if config.snr_dist is not None:
-            # draw snr from redshift-dependent distribution
-            # Load npz file with histogram2d results (ordering: redshift, mean_snr)
-            snr_data = np.load(config.snr_dist)
-            H = snr_data['H']  # 2D histogram counts [n_z_bins, n_snr_bins]
-            z_edges = snr_data['z_edges']  # redshift bin edges
-            snr_edges = snr_data['snr_edges']  # SNR bin edges 
+        # background quasar: z
+        ndz_qso = np.genfromtxt(config.qso_z_dist, names=True, encoding="UTF-8")
+        z_qso_from_prob = interp1d(ndz_qso["ndz_pdf"], ndz_qso["z"])
+        probs_qso = np.random.uniform(0.0, 1.0, size=config.num_rays)
+        z_qso = z_qso_from_prob(probs_qso)
+        pos = np.where(z_qso < redshifts)
+        while pos[0].size > 0:
+            logger.warning(
+                f"{pos[0].size} of the selected quasar redshifts are lower "
+                "than the ray redshifts. I will now reassign these "
+                "redshifs. This means the quasar redshift distribution will be "
+                "trimmed. Consider changing the input quasar redshift distribution")
+            probs_qso = np.random.uniform(0.0, 1.0, size=pos[0].size)
+            z_qso[pos] = z_qso_from_prob(probs_qso)
+            pos = np.where(z_qso < redshifts)
+
+        # background quasar: magnitude
+        """
+        ndz_qso_mag = np.genfromtxt(config.qso_mag_dist, names=True, encoding="UTF-8")
+        qso_mag_from_prob = interp1d(ndz_qso_mag["ndmag_pdf"], ndz_qso_mag["mag"])
+        probs_qso_mag = np.random.uniform(0.0, 1.0, size=config.num_rays)
+        qso_mag = qso_mag_from_prob(probs_qso_mag)
+        """
+
+        # background quasar: magnitude from redshift-dependent distribution
+        # Load npz file with histogram2d results (ordering: redshift, magnitude)
+        mag_data = np.load(config.qso_mag_dist)
+        H = mag_data['H']  # 2D histogram counts [n_z_bins, n_mag_bins]
+        z_edges = mag_data['z_edges']  # redshift bin edges
+        mag_edges = mag_data['mag_edges']  # magnitude bin edges
+        
+        # Verify expected dimensions
+        if len(z_edges) != H.shape[0] + 1:
+            raise ValueError(
+                f"Inconsistent dimensions: z_edges has {len(z_edges)} elements "
+                f"but H has {H.shape[0]} redshift bins. Expected {H.shape[0] + 1} edges.")
+        if len(mag_edges) != H.shape[1] + 1:
+            raise ValueError(
+                f"Inconsistent dimensions: mag_edges has {len(mag_edges)} elements "
+                f"but H has {H.shape[1]} magnitude bins. Expected {H.shape[1] + 1} edges.")
+        
+        # Calculate bin centers for redshift and magnitude values (mean magnitude)
+        z_centers = (z_edges[:-1] + z_edges[1:]) / 2
+        mag_centers = (mag_edges[:-1] + mag_edges[1:]) / 2
+        
+        # Create RegularGridInterpolator for the magnitude distribution
+        # This interpolates the 2D histogram to get probabilities at any (z, mag) point
+        mag_interpolator = RegularGridInterpolator(
+            (z_centers, mag_centers), H, 
+            bounds_error=False, fill_value=0.0)
+        
+        # Initialize magnitude array with 0.0
+        qso_mag = np.full_like(redshifts, 0.0)
+        
+        # For each ray, sample magnitude from the interpolated distribution at its redshift
+        for i, z in enumerate(redshifts):
+            # Clamp redshift to valid range
+            z_clamped = np.clip(z, z_centers[0], z_centers[-1])
             
-            # Verify expected dimensions
-            if len(z_edges) != H.shape[0] + 1:
-                raise ValueError(
-                    f"Inconsistent dimensions: z_edges has {len(z_edges)} elements "
-                    f"but H has {H.shape[0]} redshift bins. Expected {H.shape[0] + 1} edges.")
-            if len(snr_edges) != H.shape[1] + 1:
-                raise ValueError(
-                    f"Inconsistent dimensions: snr_edges has {len(snr_edges)} elements "
-                    f"but H has {H.shape[1]} SNR bins. Expected {H.shape[1] + 1} edges.")
+            # Evaluate interpolated distribution at this redshift across all magnitude values
+            points = np.column_stack([np.full_like(mag_centers, z_clamped), mag_centers])
+            mag_distribution = mag_interpolator(points)
             
-            # Calculate bin centers for redshift and SNR values (mean SNR)
-            z_centers = (z_edges[:-1] + z_edges[1:]) / 2
-            snr_centers = (snr_edges[:-1] + snr_edges[1:]) / 2
-            
-            # Create RegularGridInterpolator for the SNR distribution
-            # This interpolates the 2D histogram to get probabilities at any (z, snr) point
-            snr_interpolator = RegularGridInterpolator(
-                (z_centers, snr_centers), H, 
-                bounds_error=False, fill_value=0.0)
-            
-            # Initialize SNR array with -1.0 to indicate "no noise"
-            snr = np.full_like(redshifts, -1.0)
-            
-            # For each ray, sample SNR from the interpolated distribution at its redshift
-            for i, z in enumerate(redshifts):
-                # Clamp redshift to valid range
-                z_clamped = np.clip(z, z_centers[0], z_centers[-1])
-                
-                # Evaluate interpolated distribution at this redshift across all SNR values
-                points = np.column_stack([np.full_like(snr_centers, z_clamped), snr_centers])
-                snr_distribution = snr_interpolator(points)
-                
-                # Normalize to create probability distribution
-                if snr_distribution.sum() > 0:
-                    snr_probs = snr_distribution / snr_distribution.sum()
-                    # Sample a SNR value from the distribution
-                    snr[i] = np.random.choice(snr_centers, p=snr_probs)
-                
-        else:
-            # No SNR distribution provided - use -1.0 to indicate no SNR should be applied
-            snr = np.zeros_like(redshifts) -1.0
+            # Normalize to create probability distribution
+            if mag_distribution.sum() > 0:
+                mag_probs = mag_distribution / mag_distribution.sum()
+                # Sample a magnitude value from the distribution
+                qso_mag[i] = np.random.choice(mag_centers, p=mag_probs)
 
         # get the simulation names
         names = np.array([
@@ -242,6 +264,12 @@ def main(cmdargs=None):
                 z_end,
             )
         ])
+
+        # add noise flag
+        if config.noise:
+            noise = np.array([True]*names.size)
+        else:
+            noise = np.array([False]*names.size)
 
         # save catalogue
         catalogue = Table({
@@ -260,7 +288,9 @@ def main(cmdargs=None):
             "gal_pos_x": galaxy_position_x,
             "gal_pos_y": galaxy_position_y,
             "gal_pos_z": galaxy_position_z,
-            "input_snr": snr,
+            "z_qso": z_qso,
+            "qso_mag": qso_mag,
+            "noise": noise,
         })
         catalogue.write(os.path.join(config.output_dir, config.output_catalogue))
 
@@ -283,7 +313,10 @@ def main(cmdargs=None):
                 galaxy_positions[pos],
                 names[pos],
                 repeat(config.output_dir),
-                snr[pos])
+                z_qso[pos],
+                qso_mag[pos],
+                noise[pos],
+            )
 
             pool.starmap(run_simple_ray, arguments)
 

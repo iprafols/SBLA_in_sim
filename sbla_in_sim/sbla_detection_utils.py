@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 VEL_LIST = sorted( # in km/s
     #[54, 85, 112, 138, 170, 201, 233, 264, 295, 326, 358, 389, 420, 452, 483],
     [85, 112, 138, 170, 201, 233, 264, 295, 326, 358, 389, 420, 452, 483],
-    #[85, 112],
     reverse=True)
     
 COLOR_LIST = [
@@ -62,6 +61,7 @@ def find_sblas(transmission_file, name, plot=False):
     wavelength = hdu[1].data["wavelength"]
     flux = hdu[1].data["flux"]
     weights = 1/(hdu[1].data["flux_error"]**2 + 0.05)
+    hdu.close()
     
     sblas_table_all = Table(
         names=("name", "lambda_abs", "vel_sbla", "lambda_min", "lambda_max", "z"),
@@ -162,7 +162,7 @@ def find_sblas(transmission_file, name, plot=False):
                     
         fig.savefig(f"{transmission_file.replace('.fits.gz','_sblas.png')}", bbox_inches='tight', dpi=150)
 
-    # format full list of SBLAs  into the SBLA table
+    # format full list of SBLAs into the SBLA table
     for vel, intervals in found_sblas_all.items():
         for interval in intervals:
             lambda_abs = np.mean(interval)
