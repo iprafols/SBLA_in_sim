@@ -67,6 +67,7 @@ def find_sblas(transmission_file, name, z_qso, plot=False):
     wavelength = hdu[1].data["WAVELENGTH"]
     flux = hdu[1].data["FLUX"]
     weights = hdu[1].data["IVAR"]
+    mean_snr = hdu[1].header["MEAN_SNR"]
     hdu.close()
 
     sblas_table_all = Table(
@@ -87,7 +88,7 @@ def find_sblas(transmission_file, name, z_qso, plot=False):
     if plot:
         figsize = (15, 10)
         fontsize = 14
-        titlefontsize = 8
+        titlefontsize = 14
         ncols = 1
         nrows = 2
         fig = plt.figure(figsize=figsize)
@@ -96,7 +97,7 @@ def find_sblas(transmission_file, name, z_qso, plot=False):
         ax_zoom = fig.add_subplot(gs[1])
     
         ax.set_title(
-            f"Name: {name}",
+            f"Name: {name}, mean_snr: {mean_snr:.2f}",
             fontsize=titlefontsize
         )
         ax.plot(wavelength, flux)
