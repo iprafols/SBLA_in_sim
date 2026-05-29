@@ -181,9 +181,9 @@ class Spectrum:
         self.ivar = (combined_ivar * combined_cont**2).flatten()
 
 
-        rf_wave = self.wave / (1 + z_qso)
+        rf_wave = combined_wave.flatten() / (1 + z_qso)
         pos = np.where((rf_wave >= LAMBDA_RF_MIN) & (rf_wave <= LAMBDA_RF_MAX))[0]
-        self.mean_snr = np.nanmean(self.flux[pos] * np.sqrt(self.ivar[pos]))
+        self.mean_snr = np.nanmean(combined_flux.flatten()[pos] * np.sqrt(combined_ivar.flatten()[pos]))
 
     
     def save_spectrum(self, filename):
