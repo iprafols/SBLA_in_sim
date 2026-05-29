@@ -1,10 +1,11 @@
 """This file contains functions to extract random rays from a simulation
 snapshot"""
+import logging
+import traceback
+
 from astropy.io import fits
 import numpy as np
-import os
 from scipy.interpolate import interp1d
-
 import trident
 import yt
 
@@ -13,6 +14,7 @@ from sbla_in_sim.spectrum import Spectrum
 # some configuration variables used by run_simple_ray
 Z_SUN = 0.02041
 
+logger = logging.getLogger("sbla_in_sim")
 
 def find_rho_max(redshifs, snapshots):
     """Find the maximum rho at a given redshift for the specified snapshots
@@ -271,7 +273,15 @@ def run_simple_ray(ds,
         data_filename=f"{output_dir}{base_name}_ray.h5"
         )
     
-    spec_gen = Spectrum(ray, noise=noise, z_qso=z_qso, mag_qso=mag_qso)
+    try:
+        spec_gen = Spectrum(ray, noise=noise, z_qso=z_qso, mag_qso=mag_qso)
+    except ValueError as e:
+        logger.error(f"Error generating spectrum for ray {base_name}")
+        logger.error(traceback.format_exc())
+        logger.error(str(e))
+        logger.error("Skiping ray.")
+        return
+
 
     if noise:
         spec_gen.save_spectrum(f"{output_dir}{base_name}_spec.fits.gz")

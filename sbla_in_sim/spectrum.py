@@ -138,10 +138,17 @@ class Spectrum:
                 f"Failed to generate QSO template for z_qso={z_qso:.5f}, mag_qso={mag_qso:.3f} (r-band) "
                 f"with DESI color cuts. Retrying with nocolorcuts=True."
             )
-            qso_flux, qso_wave, _, obj_meta = QSO_GEN.make_templates(
-                nmodel=1, redshift=[z_qso], mag=[mag_qso], nocolorcuts=True
-            )
-        
+            try:
+                qso_flux, qso_wave, _, obj_meta = QSO_GEN.make_templates(
+                        nmodel=1, redshift=[z_qso], mag=[mag_qso], nocolorcuts=True
+                    )
+            except ValueError as e:
+                logger.error(
+                    f"Failed to generate QSO template for z_qso={z_qso:.5f}, mag_qso={mag_qso:.3f} (r-band) "
+                    f"even with nocolorcuts=True."
+                )
+                raise e
+
         qso_flux = qso_flux[0] # we only generated one spectrum, so we take the first element of the array
         qso_cont = reconstruct_qso_continuum(qso_flux, qso_wave, z_qso, obj_meta)
 
