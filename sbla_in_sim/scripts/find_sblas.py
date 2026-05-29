@@ -17,19 +17,41 @@ def process_spectrum(args_tuple):
     
     Arguments
     ---------
-    args_tuple: tuple
-        (index_spectrum, transmission_file, name, plot)
+    index_spectrum: int
+    The index of the spectrum in the catalogue
+
+    transmission_file: str
+    The path to the transmission file for the spectrum
+
+    name: str
+    The name of the spectrum (used for plotting)
+
+    z_qso: float
+    The redshift of the background quasar, used to compute the rest-frame wavelength and identify
+    the Lyman-alpha forest region where to find SBLAs.
+
+    plot: bool
+    Whether to plot the spectrum with the found SBLAs
         
     Returns
     -------
-    tuple
-        (index_spectrum, sblas_table_all, sblas_table_reduced)
+    index_spectrum: int
+    The index of the spectrum in the catalogue
+
+    sblas_table_all: astropy.Table
+    Table with all the SBLAs found in the spectrum
+
+    sblas_table_reduced: astropy.Table
+    Table with the reduced set of SBLAs found in the spectrum
+
+    error: str or None
+    Error message if an error occurred, otherwise None
     """
-    index_spectrum, transmission_file, name, plot = args_tuple
+    index_spectrum, transmission_file, name, z_qso, plot = args_tuple
     
     try:
-        sblas_table_all, sblas_table_reduced = find_sblas(transmission_file, name, plot=plot)
-        return (index_spectrum, sblas_table_all, sblas_table_reduced)
+        sblas_table_all, sblas_table_reduced = find_sblas(transmission_file, name, z_qso, plot=plot)
+        return (index_spectrum, sblas_table_all, sblas_table_reduced, None)
     except Exception as e:
         # Return the error information so we can handle it in the main process
         return (index_spectrum, None, None, str(e))
@@ -107,7 +129,8 @@ def main(cmdargs=None):
     t0 = time.time()
     logger.info("Loading catalogue")
     dir = os.path.dirname(args.catalogue)
-    catalogue = Table.read(args.catalogue)
+    converters = {'noise': bool}
+    catalogue = Table.read(args.catalogue, converters=converters)
     n_spectra = len(catalogue)
 
     t1 = time.time()
@@ -124,9 +147,13 @@ def main(cmdargs=None):
     logger.info("Preparing tasks for parallel processing")
     tasks = []
     for index_spectrum in range(n_spectra):
-        transmission_file = os.path.join(dir, f"{catalogue['name'][index_spectrum]}_spec_nonoise.fits.gz")
+        if catalogue["noise"][index_spectrum]:
+            transmission_file = os.path.join(dir, f"{catalogue['name'][index_spectrum]}_spec.fits.gz")
+        else:
+            transmission_file = os.path.join(dir, f"{catalogue['name'][index_spectrum]}_spec_nonoise.fits.gz")
         name = catalogue['name'][index_spectrum]
-        tasks.append((index_spectrum, transmission_file, name, args.plot))
+        z_qso = catalogue['z_qso'][index_spectrum]
+        tasks.append((index_spectrum, transmission_file, name, z_qso, args.plot))
 
     # Process spectra in parallel
     logger.info("Finding SBLAs in spectra using multiprocessing")
@@ -156,11 +183,10 @@ def main(cmdargs=None):
                 
             # Process results
             for result in results:
-                if len(result) == 4:  # Error case
-                    index_spectrum, _, _, error = result
+                index_spectrum, sblas_all, sblas_reduced, error = result
+                if error is not None:  # Error case
                     errors.append(f"Spectrum {index_spectrum}: {error}")
                 else:
-                    index_spectrum, sblas_all, sblas_reduced = result
                     sblas_table_all_list[index_spectrum] = sblas_all
                     sblas_table_reduced_list[index_spectrum] = sblas_reduced
     
@@ -187,6 +213,8 @@ def main(cmdargs=None):
 
     t3 = time.time()
     logger.info(f"SBLA tables concatenated. Elapsed time: {(t3-t2)/60.0} minutes")
+    logger.info(f"Total number of SBLAs found: {len(sblas_table_all)}")
+    logger.info(f"Number of SBLAs in reduced table: {len(sblas_table_reduced)}")
 
     # save tables
     logger.info("Saving SBLA tables")
@@ -196,8 +224,8 @@ def main(cmdargs=None):
         raise ValueError("Input catalogue filename must end with .csv to save SBLA tables.")
     if sblas_table_reduced_filename == args.catalogue:
         raise ValueError("Input catalogue filename must end with .csv to save SBLA tables.")    
-    sblas_table_all.write(sblas_table_all_filename, overwrite=True)
     sblas_table_reduced.write(sblas_table_reduced_filename, overwrite=True)
+    sblas_table_all.write(sblas_table_all_filename, overwrite=True)
     t4 = time.time()
     logger.info(f"SBLA tables saved. Elapsed time: {(t4-t3)/60.0} minutes")
 

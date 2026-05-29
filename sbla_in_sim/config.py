@@ -35,8 +35,9 @@ ACCEPTED_GENERAL_OPTIONS = [
 ]
 
 ACCEPTED_RANDOM_RAYS_OPTIONS = [
-    "noise dist", "num rays", "random seed", 
-    "rays base name", "snapshots", "snapshots dir", "z distribution",
+    "noise", "num rays", "random seed", 
+    "rays base name", "snapshots", "snapshots dir", "z distribution", 
+    "qso z distribution", "qso mag distribution"
 ]
 
 DEFAULT_CONFIG = {
@@ -54,6 +55,7 @@ DEFAULT_CONFIG = {
         "log level yt": "ERROR",  # yt log level  
     },
     "random rays": {
+        "noise": False,
         "num rays": 1000,
         "random seed": 45737353,
         "rays base name": "ray_",
@@ -112,6 +114,10 @@ class Config:
     Level of yt logging. Messages with lower priorities will not be logged.
     Accepted values are (in order of priority) NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL.
 
+    noise: bool
+    Whether to add noise to the spectrum or not. If True, the spectra will be generated
+    with noise, otherwise it will be noiseless.
+
     num_processors: int
     Number of processors to use for multiprocessing-enabled tasks (will be passed
     downstream to relevant classes like e.g. ExpectedFlux or Data)
@@ -126,6 +132,16 @@ class Config:
     If True, overwrite a previous run in the saved in the same output
     directory. Does not have any effect if the folder `output_dir` does not
     exist.
+
+    qso_mag_dist: str
+    Name of the file containing the background quasar magnitude distribution.
+    The file should contain two columns: the first column should contain the magnitudes
+    values, and the second column should contain the corresponding probabilities.
+
+    qso_z_dist: str
+    Name of the file containing the background quasar redshift distribution.
+    The file should contain two columns: the first column should contain the magnitude
+    values, and the second column should contain the corresponding probabilities.
 
     random_seed: int
     Random seed for the random number generator. This is used to ensure
@@ -146,6 +162,11 @@ class Config:
     snapshots_dir: str
     Directory where the snapshots are stored. This is used to load the
     snapshots when extracting the rays.
+
+    z_dist: str
+    Name of the file containing the redshift distribution to sample the rays from.
+    The file should contain two columns: the first column should contain the redshift
+    values, and the second column should contain the corresponding probabilities.
     """
 
     def __init__(self, filename):
@@ -186,8 +207,10 @@ class Config:
         self.log_level_yt = None
         self.__format_logging_section()
 
-        self.noise_dist = None
+        self.noise = None
         self.num_rays = None
+        self.qso_mag_dist = None
+        self.qso_z_dist = None
         self.random_seed = None
         self.rays_base_name = None
         self.snapshots = None
@@ -346,24 +369,26 @@ class Config:
             raise ConfigError("Missing section [random rays]")
         section = self.config["random rays"] 
 
+        self.noise = section.getboolean("noise")
+        # this should never be true as the logging section is loaded in the
+        # default dictionary
+        if self.noise is None: # pragma: no cover
+            raise ConfigError("Missing variable 'noise' in section [random rays]")
+
         self.num_rays = section.getint("num rays")
         # this should never be true as the logging section is loaded in the
         # default dictionary
         if self.num_rays is None: # pragma: no cover
             raise ConfigError("Missing variable 'num rays' in section [random rays]")
-
-        self.snapshots = section.get("snapshots")
-        if self.snapshots is None:
-            raise ConfigError("Missing variable 'snapshots' in section [random rays]")
-
-        self.snapshots_dir = section.get("snapshots dir")
-        if self.snapshots_dir is None:
-            raise ConfigError("Missing variable 'snapshots dir' in section [random rays]")
-
-        self.z_dist = section.get("z distribution")
-        if self.z_dist is None:
-            raise ConfigError("Missing variable 'z distribution' in section [random rays]")
-
+        
+        self.qso_mag_dist = section.get("qso mag distribution")
+        if self.qso_mag_dist is None:
+            raise ConfigError("Missing variable 'qso mag distribution' in section [random rays]")
+        
+        self.qso_z_dist = section.get("qso z distribution")
+        if self.qso_z_dist is None:
+            raise ConfigError("Missing variable 'qso z distribution' in section [random rays]")
+        
         self.random_seed = section.getint("random seed")
         # this should never be true as the general section is loaded in the
         # default dictionary
@@ -377,8 +402,18 @@ class Config:
         if self.rays_base_name is None:  # pragma: no cover
             raise ConfigError(
                 "Missing variable 'rays base name' in section [random rays]")
+
+        self.snapshots = section.get("snapshots")
+        if self.snapshots is None:
+            raise ConfigError("Missing variable 'snapshots' in section [random rays]")
+
+        self.snapshots_dir = section.get("snapshots dir")
+        if self.snapshots_dir is None:
+            raise ConfigError("Missing variable 'snapshots dir' in section [random rays]")
         
-        self.noise_dist = section.get("noise dist")
+        self.z_dist = section.get("z distribution")
+        if self.z_dist is None:
+            raise ConfigError("Missing variable 'z distribution' in section [random rays]")
 
     def __parse_environ_variables(self):
         """Read all variables and replaces the enviroment variables for their

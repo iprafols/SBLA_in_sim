@@ -1,13 +1,20 @@
 """This file contains functions to extract random rays from a simulation
 snapshot"""
+import logging
+import traceback
+
 from astropy.io import fits
 import numpy as np
-import math
-import yt
+from scipy.interpolate import interp1d
 import trident
+import yt
+
+from sbla_in_sim.spectrum import Spectrum
 
 # some configuration variables used by run_simple_ray
 Z_SUN = 0.02041
+
+logger = logging.getLogger("sbla_in_sim")
 
 def find_rho_max(redshifs, snapshots):
     """Find the maximum rho at a given redshift for the specified snapshots
@@ -31,6 +38,30 @@ def find_rho_max(redshifs, snapshots):
         pos = np.argwhere((snapshots["z_max"] > redshif))
         rho_max[index] = np.max(snapshots["rho_max"][pos])
     return rho_max
+
+def generate_noiseless_spectrum(ray):
+    """Generate a noiseless spectrum from a ray
+
+    Arguments
+    ---------
+    ray: trident.Ray
+    The ray from which the spectrum will be generated
+
+    Return
+    ------
+    spec_gen: trident.SpectrumGenerator
+    The generated spectrum generator object with the noiseless spectrum
+    """
+    spec_gen = trident.SpectrumGenerator(
+        lambda_min=LAMBDA_MIN,
+        lambda_max=LAMBDA_MAX,
+        dlambda=DLAMBDA)
+    spec_gen.make_spectrum(
+        ray,
+        lines='all',
+        store_observables=True)
+    
+    return spec_gen
 
 def generate_ray(rho, theta_e, theta_r, phi_r, radius):
     """Function to compute the starting and ending points of a ray
@@ -106,7 +137,7 @@ def load_snapshot(fn, dir=""):
         function=metallicity_e,
         sampling_type="local",
         force_override=True,
-        display_name="Z/Z$_{\odot}$",
+        display_name=r"Z/Z$_{\odot}$",
         take_log=True,
         units="")
     return ds
@@ -182,6 +213,8 @@ def run_simple_ray(ds,
                    galaxy_pos,
                    base_name,
                    output_dir,
+                   z_qso,
+                   mag_qso,
                    noise):
     """Run a simple ray from a specified start and end shifts from the centre
     of a galaxy
@@ -213,8 +246,14 @@ def run_simple_ray(ds,
     output_dir: str
     Directory where outputs are saved
 
-    noise: float
-    The noise to be applied to the spectrum
+    z_qso: float
+    Redshift of the background quasar
+
+    mag_qso: float
+    The magnitude of the background quasar
+
+    noise: bool
+    Whether to add noise to the spectrum
     """
     start = galaxy_pos[:] + start_shift
     end = galaxy_pos[:] + end_shift
@@ -233,23 +272,22 @@ def run_simple_ray(ds,
         fields=['density', 'temperature', 'metallicity'],
         data_filename=f"{output_dir}{base_name}_ray.h5"
         )
-    spec_gen = trident.SpectrumGenerator(
-        lambda_min= 3000,
-        lambda_max= 9000,
-        dlambda=0.8)
-    spec_gen.make_spectrum(
-        ray,
-        lines='all',
-        store_observables=True)
-    spec_gen.save_spectrum(
-        f"{output_dir}{base_name}_spec_nonoise.fits.gz",
-        format="FITS")
-    if noise > 0.0:
-        spec_gen.add_gaussian_noise(noise)
-        spec_gen.save_spectrum(
-            f"{output_dir}{base_name}_spec.fits.gz",
-            format="FITS")
+    
+    try:
+        spec_gen = Spectrum(ray, noise=noise, z_qso=z_qso, mag_qso=mag_qso)
+    except ValueError as e:
+        logger.error(f"Error generating spectrum for ray {base_name}")
+        logger.error(traceback.format_exc())
+        logger.error(str(e))
+        logger.error("Skiping ray.")
+        return
 
+
+    if noise:
+        spec_gen.save_spectrum(f"{output_dir}{base_name}_spec.fits.gz")
+    else:
+        spec_gen.save_spectrum(f"{output_dir}{base_name}_spec_nonoise.fits.gz")
+        
 def select_snapshot(redshif, rho, snapshots):
     """Randomly select a snapshot given a choice of z and distance
 
