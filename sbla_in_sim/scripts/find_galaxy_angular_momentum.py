@@ -70,7 +70,7 @@ def main(cmdargs=None):
         default=None,
         help=(
             'Output file to save the computed angular momentum vectors. '
-            'If not provided, then use the input file name with "_angular_momentum" 
+            'If not provided, then use the input file name with "_angular_momentum" '
             'suffix. Note that this assumes the input file has a ".txt" extension.')
     )
 
