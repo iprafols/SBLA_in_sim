@@ -6,6 +6,7 @@ compute their angular momentum.
 import argparse
 import time
 
+import numpy as np
 import pandas as pd
 import yt
 
