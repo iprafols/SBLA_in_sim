@@ -23,8 +23,14 @@ def find_angular_momentum_and_mass(row, snapshots_dir):
 
     Returns
     -------
-    angular_momentum: np.ndarray
-    The angular momentum vector of the galaxy.
+    angular_momentum_x: float
+    The x-component of the angular momentum vector.
+    
+    angular_momentum_y: float
+    The y-component of the angular momentum vector.
+
+    angular_momentum_z: float
+    The z-component of the angular momentum vector.
 
     mass: float
     The total mass of the galaxy.
@@ -39,12 +45,6 @@ def find_angular_momentum_and_mass(row, snapshots_dir):
     sphere.set_field_parameter("bulk_velocity", bulk_vel)
     angular_momentum = sphere.quantities.angular_momentum_vector()
     mass = sphere.quantities.total_mass()
-    return angular_momentum, mass
-
-
-def compute_row(record, snapshots_dir):
-    """Compute output columns for one catalogue row."""
-    angular_momentum, mass = find_angular_momentum_and_mass(record, snapshots_dir)
     return angular_momentum[0], angular_momentum[1], angular_momentum[2], mass
 
 def main(cmdargs=None):
@@ -110,15 +110,15 @@ def main(cmdargs=None):
 
     print("Computing angular momentum vectors and masses")
     records = catalogue.to_dict(orient='records')
-    n_workers = max(1, args.n_workers)
+    num_workers = max(1, args.num_workers)
 
-    if n_workers == 1:
-        results = [compute_row(record, args.snapshots_dir) for record in records]
+    if num_workers == 1:
+        results = [find_angular_momentum_and_mass(record, args.snapshots_dir) for record in records]
     else:
-        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
             results = list(
                 executor.map(
-                    compute_row,
+                    find_angular_momentum_and_mass,
                     records,
                     [args.snapshots_dir] * len(records),
                     chunksize=1,
