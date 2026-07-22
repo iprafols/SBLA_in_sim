@@ -79,10 +79,12 @@ def main(cmdargs=None):
     if args.output_file is None:
         args.output_file = args.input_file.replace('.txt', '_angular_momentum.txt')
 
-    t0_0 = time.time()
+    t0 = time.time()
 
+    print(f"Reading catalogue from {args.input_file}")
     catalogue = pd.read_csv(args.input_file, sep='\s+', index_col="name")
 
+    print("Computing angular momentum vectors and masses")
     catalogue[['L_x', 'L_y', 'L_z', 'M']] = catalogue.apply(
         find_angular_momentum_and_mass, 
         axis=1,
@@ -90,4 +92,9 @@ def main(cmdargs=None):
         arguments=(args.snapshots_dir,),
     )
 
+    print(f"Saving results to {args.output_file}")
     catalogue.to_csv(args.output_file, sep='\t', index=False)
+
+    t1 = time.time()
+    print("Done")
+    print(f"Processing time: {t1 - t0:.2f} seconds")
