@@ -51,7 +51,7 @@ def main(cmdargs=None):
                      'from a list of galaxy positions and sizes'))
 
     parser.add_argument(
-        'input-file',
+        '--input-file',
         type=str,
         default=None,
         help='Input file containing galaxy positions and sizes.'
@@ -75,6 +75,11 @@ def main(cmdargs=None):
     )
 
     args = parser.parse_args(cmdargs)
+
+    if args.input_file is None:
+        raise ValueError("Input file must be provided using --input-file.")
+    if args.snapshots_dir is None:
+        raise ValueError("Snapshots directory must be provided using --snapshots-dir.")
 
     if args.output_file is None:
         args.output_file = args.input_file.replace('.txt', '_angular_momentum.txt')
