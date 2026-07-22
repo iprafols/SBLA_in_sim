@@ -4,7 +4,9 @@ compute their angular momentum.
 """
 
 import argparse
+import os
 import time
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 import pandas as pd
@@ -38,6 +40,12 @@ def find_angular_momentum_and_mass(row, snapshots_dir):
     angular_momentum = sphere.quantities.angular_momentum_vector()
     mass = sphere.quantities.total_mass()
     return angular_momentum, mass
+
+
+def compute_row(record, snapshots_dir):
+    """Compute output columns for one catalogue row."""
+    angular_momentum, mass = find_angular_momentum_and_mass(record, snapshots_dir)
+    return angular_momentum[0], angular_momentum[1], angular_momentum[2], mass
 
 def main(cmdargs=None):
     """Read the catalogue of galaxy positions and sizes and compute their angular momentum.
@@ -76,6 +84,15 @@ def main(cmdargs=None):
             'suffix. Note that this assumes the input file has a ".txt" extension.')
     )
 
+    parser.add_argument(
+        '--num-workers',
+        type=int,
+        default=os.cpu_count() or 1,
+        help=(
+            'Number of worker processes used to compute angular momentum. '
+            'Use 1 to run serially.')
+    )
+
     args = parser.parse_args(cmdargs)
 
     if args.input_file is None:
@@ -92,11 +109,25 @@ def main(cmdargs=None):
     catalogue = pd.read_csv(args.input_file, sep=r'\s+')
 
     print("Computing angular momentum vectors and masses")
-    catalogue[['L_x', 'L_y', 'L_z', 'M']] = catalogue.apply(
-        find_angular_momentum_and_mass, 
-        axis=1,
-        result_type='expand',
-        args=(args.snapshots_dir,),
+    records = catalogue.to_dict(orient='records')
+    n_workers = max(1, args.n_workers)
+
+    if n_workers == 1:
+        results = [compute_row(record, args.snapshots_dir) for record in records]
+    else:
+        with ProcessPoolExecutor(max_workers=n_workers) as executor:
+            results = list(
+                executor.map(
+                    compute_row,
+                    records,
+                    [args.snapshots_dir] * len(records),
+                    chunksize=1,
+                )
+            )
+
+    catalogue[['L_x', 'L_y', 'L_z', 'M']] = pd.DataFrame(
+        results,
+        index=catalogue.index,
     )
 
     print(f"Saving results to {args.output_file}")
