@@ -89,6 +89,7 @@ def main(cmdargs=None):
 
     print(f"Reading catalogue from {args.input_file}")
     catalogue = pd.read_csv(args.input_file, sep=r'\s+')
+    catalogue["name"] = catalogue["name"].astype(int)  # Ensure 'name' is integer for snapshot loading
 
     print(catalogue.columns)
     print(catalogue.head())
