@@ -94,7 +94,7 @@ def main(cmdargs=None):
         find_angular_momentum_and_mass, 
         axis=1,
         result_type='expand',
-        arguments=(args.snapshots_dir,),
+        args=(args.snapshots_dir,),
     )
 
     print(f"Saving results to {args.output_file}")
