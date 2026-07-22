@@ -30,7 +30,7 @@ def find_angular_momentum_and_mass(row, snapshots_dir):
     center = np.array([row['galaxy_pos_x'], row['galaxy_pos_y'], row['galaxy_pos_z']])
     radius = float(row['rho_max']) 
     snapshot_id = int(row['name'])
-    ds = yt.load(snapshots_dir + f"/RD{snapshot_id:04d}/RD0{snapshot_id:04d}")
+    ds = yt.load(snapshots_dir + f"/RD{snapshot_id:04d}/RD{snapshot_id:04d}")
     center = ds.arr(center, 'kpc')
     sphere = ds.sphere(center, (radius, 'kpc'))
     bulk_vel = sphere.quantities.bulk_velocity()  #es como restarle el mov glov¡bal
