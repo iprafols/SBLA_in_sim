@@ -82,7 +82,7 @@ def main(cmdargs=None):
     t0 = time.time()
 
     print(f"Reading catalogue from {args.input_file}")
-    catalogue = pd.read_csv(args.input_file, sep='\s+', index_col="name")
+    catalogue = pd.read_csv(args.input_file, sep=r'\s+', index_col="name")
 
     print("Computing angular momentum vectors and masses")
     catalogue[['L_x', 'L_y', 'L_z', 'M']] = catalogue.apply(
