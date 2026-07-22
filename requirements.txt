@@ -3,6 +3,7 @@ gitpython
 iminuit
 matplotlib
 numpy
+pandas
 scipy
 yt
 tqdm

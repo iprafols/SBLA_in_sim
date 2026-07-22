@@ -22,6 +22,7 @@ dependencies = [
 
 [project.scripts]
 "extract_random_rays.py" = "sbla_in_sim.scripts.extract_random_rays:main"
+"find_galaxy_angular_momentum.py" = "sbla_in_sim.scripts.find_galaxy_angular_momentum:main"
 "fit_absorption_lines.py" = "sbla_in_sim.scripts.fit_absorption_lines:main"
 "find_sblas.py" = "sbla_in_sim.scripts.find_sblas:main"
 
