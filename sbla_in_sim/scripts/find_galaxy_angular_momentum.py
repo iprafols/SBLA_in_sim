@@ -91,9 +91,6 @@ def main(cmdargs=None):
     print(f"Reading catalogue from {args.input_file}")
     catalogue = pd.read_csv(args.input_file, sep=r'\s+')
 
-    print(catalogue.columns)
-    print(catalogue.head())
-
     print("Computing angular momentum vectors and masses")
     catalogue[['L_x', 'L_y', 'L_z', 'M']] = catalogue.apply(
         find_angular_momentum_and_mass, 
