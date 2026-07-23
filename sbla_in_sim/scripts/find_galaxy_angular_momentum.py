@@ -23,17 +23,14 @@ def find_angular_momentum_and_mass(row, snapshots_dir):
 
     Returns
     -------
-    angular_momentum_x: float
-    The x-component of the angular momentum vector.
+    results: np.ndarray
+    A numpy array containing the following:
+        - the components of the angular momentum vector (first three elements)
+        - the mass of the galaxy (gas)
+        - the mass of the galaxy (particles)
     
-    angular_momentum_y: float
-    The y-component of the angular momentum vector.
-
-    angular_momentum_z: float
-    The z-component of the angular momentum vector.
-
-    mass: float
-    The total mass of the galaxy.
+    units: list
+    A list containing the units of the angular momentum vector and mass.
     """
     center = np.array([row['galaxy_pos_x'], row['galaxy_pos_y'], row['galaxy_pos_z']])
     radius = float(row['rho_max']) 
@@ -41,11 +38,20 @@ def find_angular_momentum_and_mass(row, snapshots_dir):
     ds = yt.load(snapshots_dir + f"/RD{snapshot_id:04d}/RD{snapshot_id:04d}")
     center = ds.arr(center, 'kpc')
     sphere = ds.sphere(center, (radius, 'kpc'))
-    bulk_vel = sphere.quantities.bulk_velocity()  #es como restarle el mov glov¡bal
+    bulk_vel = sphere.quantities.bulk_velocity()
     sphere.set_field_parameter("bulk_velocity", bulk_vel)
     angular_momentum = sphere.quantities.angular_momentum_vector()
     mass = sphere.quantities.total_mass()
-    return angular_momentum[0], angular_momentum[1], angular_momentum[2], mass
+
+    results = np.array([
+        angular_momentum[0].value, 
+        angular_momentum[1].value, 
+        angular_momentum[2].value,
+        mass[0].value,
+        mass[1].value,
+    ])
+    units = [angular_momentum[0].units, mass[0].units]
+    return results, units
 
 def main(cmdargs=None):
     """Read the catalogue of galaxy positions and sizes and compute their angular momentum.
@@ -87,7 +93,7 @@ def main(cmdargs=None):
     parser.add_argument(
         '--num-workers',
         type=int,
-        default=os.cpu_count() or 1,
+        default=os.cpu_count()//2 or 1,
         help=(
             'Number of worker processes used to compute angular momentum. '
             'Use 1 to run serially.')
@@ -125,10 +131,23 @@ def main(cmdargs=None):
                 )
             )
 
-    catalogue[['L_x', 'L_y', 'L_z', 'M']] = pd.DataFrame(
-        results,
-        index=catalogue.index,
-    )
+    if len(results) == 0:
+        raise ValueError("Input catalogue is empty; no rows to process.")
+
+    # Each result is (values_array, [angular_momentum_unit, mass_unit]).
+    values, units = zip(*results)
+    values_array = np.asarray(values)
+    angular_momentum_units, mass_units = units[0]
+
+    new_columns = [
+        f'angular_momentum_x[{angular_momentum_units}]',
+        f'angular_momentum_y[{angular_momentum_units}]',
+        f'angular_momentum_z[{angular_momentum_units}]',
+        f'mass_gas[{mass_units}]',
+        f'mass_particles[{mass_units}]',
+    ]
+
+    catalogue[new_columns] = pd.DataFrame(values_array, index=catalogue.index)
 
     print(f"Saving results to {args.output_file}")
     catalogue.to_csv(args.output_file, sep='\t', index=False)
