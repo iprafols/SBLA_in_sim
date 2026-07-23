@@ -176,9 +176,9 @@ def main(cmdargs=None):
         galaxy_position_x = snapshots["galaxy_pos_x"][choices]
         galaxy_position_y = snapshots["galaxy_pos_y"][choices]
         galaxy_position_z = snapshots["galaxy_pos_z"][choices]
-        galaxy_angular_momentum_x = snapshots["angular_momentum_x[cm**2/s]"][choices]
-        galaxy_angular_momentum_y = snapshots["angular_momentum_y[cm**2/s]"][choices]
-        galaxy_angular_momentum_z = snapshots["angular_momentum_z[cm**2/s]"][choices]
+        galaxy_angular_momentum_x = snapshots["angular_momentum_xcm2s"][choices]
+        galaxy_angular_momentum_y = snapshots["angular_momentum_ycm2s"][choices]
+        galaxy_angular_momentum_z = snapshots["angular_momentum_zcm2s"][choices]
         galaxy_positions = np.vstack([galaxy_position_x,
                                       galaxy_position_y,
                                       galaxy_position_z]).transpose()
