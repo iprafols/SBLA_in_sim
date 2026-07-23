@@ -161,8 +161,8 @@ def main(cmdargs=None):
         snapshots_rho_max = find_rho_max(redshifts, snapshots)
         rho = snapshots_rho_max * np.random.uniform(0, 1, size=config.num_rays)**(1/3)
         theta_e = np.random.uniform(0, 2*np.pi, size=config.num_rays)
-        theta_r = np.random.uniform(0, 2*np.pi, size=config.num_rays)
-        phi_r = np.random.uniform(-np.pi, np.pi, size=config.num_rays)
+        phi_r = np.random.uniform(0, 2*np.pi, size=config.num_rays)
+        theta_r = np.acos(np.random.uniform(-1, 1, size=config.num_rays))
         x_start, y_start, z_start, x_end, y_end, z_end = generate_ray(
             rho, theta_e, theta_r, phi_r, 3*snapshots_rho_max)
         start_shifts = np.vstack([x_start, y_start, z_start]).transpose()
@@ -176,6 +176,9 @@ def main(cmdargs=None):
         galaxy_position_x = snapshots["galaxy_pos_x"][choices]
         galaxy_position_y = snapshots["galaxy_pos_y"][choices]
         galaxy_position_z = snapshots["galaxy_pos_z"][choices]
+        galaxy_angular_momentum_x = snapshots["angular_momentum_x[cm**2/s]"][choices]
+        galaxy_angular_momentum_y = snapshots["angular_momentum_y[cm**2/s]"][choices]
+        galaxy_angular_momentum_z = snapshots["angular_momentum_z[cm**2/s]"][choices]
         galaxy_positions = np.vstack([galaxy_position_x,
                                       galaxy_position_y,
                                       galaxy_position_z]).transpose()
@@ -195,14 +198,6 @@ def main(cmdargs=None):
             probs_qso = np.random.uniform(0.0, 1.0, size=pos[0].size)
             z_qso[pos] = z_qso_from_prob(probs_qso)
             pos = np.where(z_qso < redshifts)
-
-        # background quasar: magnitude
-        """
-        ndz_qso_mag = np.genfromtxt(config.qso_mag_dist, names=True, encoding="UTF-8")
-        qso_mag_from_prob = interp1d(ndz_qso_mag["ndmag_pdf"], ndz_qso_mag["mag"])
-        probs_qso_mag = np.random.uniform(0.0, 1.0, size=config.num_rays)
-        qso_mag = qso_mag_from_prob(probs_qso_mag)
-        """
 
         # background quasar: magnitude from redshift-dependent distribution
         # Load npz file with histogram2d results (ordering: redshift, magnitude)
@@ -288,6 +283,9 @@ def main(cmdargs=None):
             "gal_pos_x": galaxy_position_x,
             "gal_pos_y": galaxy_position_y,
             "gal_pos_z": galaxy_position_z,
+            "gal_angular_momentum_x[cm**2/s]": galaxy_angular_momentum_x,
+            "gal_angular_momentum_y[cm**2/s]": galaxy_angular_momentum_y,
+            "gal_angular_momentum_z[cm**2/s]": galaxy_angular_momentum_z,
             "z_qso": z_qso,
             "qso_mag": qso_mag,
             "noise": noise,
