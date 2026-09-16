@@ -288,12 +288,12 @@ def run_simple_ray(ds,
     else:
         spec_gen.save_spectrum(f"{output_dir}{base_name}_spec_nonoise.fits.gz")
         
-def select_snapshot(redshif, rho, snapshots):
+def select_snapshot(redshift, rho, snapshots):
     """Randomly select a snapshot given a choice of z and distance
 
     Arguments
     ---------
-    redshif: float
+    redshift: float
     Chosen redshift
 
     rho: float
@@ -308,6 +308,6 @@ def select_snapshot(redshif, rho, snapshots):
     choice: str
     The position of the chosen
     """
-    pos = np.argwhere((snapshots["rho_max"] > rho) & (snapshots["z_max"] > redshif))
+    pos = np.argwhere((snapshots["rho_max"] > rho) & (snapshots["z_max"] > redshift))
     choice = np.random.choice(pos.reshape(pos.shape[0]))
     return choice
