@@ -124,14 +124,14 @@ def main(cmdargs=None):
         ]).transpose()
 
         t1_1 = time.time()
-        print(f"INFO: Catalogue loaded. Elapsed time: {(t1_1-t1_0)/60.0} minutes")
+        logger.info(f"Catalogue loaded. Elapsed time: {(t1_1-t1_0)/60.0} minutes")
 
     ####################################
     # new run:                         #
     #  - compute catalogue and skewers #
     ####################################
     else:
-        print("Computing catalogue")
+        logger.info("Computing catalogue")
         t1_0 = time.time()
         np.random.seed(config.random_seed)
 
