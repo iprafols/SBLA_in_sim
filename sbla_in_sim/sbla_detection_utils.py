@@ -209,7 +209,7 @@ def find_sblas(transmission_file, name, z_qso, plot=False):
             lambda_abs = np.mean(interval)
             sblas_table_reduced.add_row((
                 name,
-                np.mean(interval),
+                lambda_abs,
                 vel,
                 np.min(interval),
                 np.max(interval), 
@@ -302,19 +302,16 @@ def reduce_intervals(sblas_pos):
             eaten = False
             
             if length_a == 0:
-                # For single pixel SBLAs (length 0), only remove if the pixel 
-                # is completely inside a larger interval, not just overlapping
-                pixel_wavelength = item[0]  # Since length is 0, item[0] == item[-1]
-                for larger_item in larger_intervals:
-                    # Check if pixel falls strictly inside the larger interval
-                    if larger_item[0] <= pixel_wavelength <= larger_item[-1]:
-                        eaten = True
-                        break
+                # For single pixel SBLAs we are essentially detecting noise so they are discaded
+                eaten = True
+
             else:
                 # For extended SBLAs, use the original overlap criterion
+                # this means keeping the SBLA where there is at least 50% overlap
+                # in practice, this means checking whether the 
                 for larger_item in larger_intervals:
-                    overlap = max(0, min(item[-1], larger_item[-1]) - max(item[0], larger_item[0]))
-                    if overlap >= 0.5 * length_a:
+                    lambda_abs = np.mean(item)
+                    if larger_item[0] <= lambda_abs <= larger_item[-1]:
                         eaten = True
                         break
             
