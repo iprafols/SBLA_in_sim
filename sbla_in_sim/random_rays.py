@@ -39,30 +39,6 @@ def find_rho_max(redshifs, snapshots):
         rho_max[index] = np.max(snapshots["rho_max"][pos])
     return rho_max
 
-def generate_noiseless_spectrum(ray):
-    """Generate a noiseless spectrum from a ray
-
-    Arguments
-    ---------
-    ray: trident.Ray
-    The ray from which the spectrum will be generated
-
-    Return
-    ------
-    spec_gen: trident.SpectrumGenerator
-    The generated spectrum generator object with the noiseless spectrum
-    """
-    spec_gen = trident.SpectrumGenerator(
-        lambda_min=LAMBDA_MIN,
-        lambda_max=LAMBDA_MAX,
-        dlambda=DLAMBDA)
-    spec_gen.make_spectrum(
-        ray,
-        lines='all',
-        store_observables=True)
-    
-    return spec_gen
-
 def generate_ray(rho, theta_e, theta_r, phi_r, radius):
     """Function to compute the starting and ending points of a ray
 
