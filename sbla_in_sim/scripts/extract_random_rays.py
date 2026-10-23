@@ -164,7 +164,7 @@ def main(cmdargs=None):
         phi_r = np.random.uniform(0, 2*np.pi, size=config.num_rays)
         theta_r = np.acos(np.random.uniform(-1, 1, size=config.num_rays))
         x_start, y_start, z_start, x_end, y_end, z_end = generate_ray(
-            rho, theta_e, theta_r, phi_r, 3*snapshots_rho_max)
+            rho, theta_e, theta_r, phi_r, snapshots_rho_max)
         start_shifts = np.vstack([x_start, y_start, z_start]).transpose()
         end_shifts = np.vstack([x_end, y_end, z_end]).transpose()
             

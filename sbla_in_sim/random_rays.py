@@ -39,7 +39,7 @@ def find_rho_max(redshifs, snapshots):
         rho_max[index] = np.max(snapshots["rho_max"][pos])
     return rho_max
 
-def generate_ray(rho, theta_e, theta_r, phi_r, radius):
+def generate_ray(rho, theta_e, theta_r, phi_r, rho_max):
     """Function to compute the starting and ending points of a ray
 
     Arguments
@@ -56,8 +56,8 @@ def generate_ray(rho, theta_e, theta_r, phi_r, radius):
     phi_r: array of float
     Rotation angle phi for the starting and ending points
 
-    radius: array of float
-    Radius of the sphere including the starting and ending point
+    rho_max: array of float
+    Maximum radius being probed.
 
     Return
     ------
@@ -79,15 +79,45 @@ def generate_ray(rho, theta_e, theta_r, phi_r, radius):
     z_end: array of float
     z coordinate of the ending point
     """
-    # ray start
-    x_start, y_start, z_start = rotate(-radius, 0, 0, theta_r, phi_r)
+    # 1. Compute unrotated fixed-point coordinates
+    r_start = 3.0 * rho_max
+    
+    rho_sq = rho**2
+    rho_max_sq = rho_max**2
+    
+    x_end_unrot = r_start - (2.0 * rho_sq) / r_start
+    radius_yz = np.sqrt(4.0 * rho_sq - (4.0 * rho_sq**2) / (9.0 * rho_max_sq))
+    
+    y_end_unrot = radius_yz * np.cos(theta_e)
+    z_end_unrot = radius_yz * np.sin(theta_e)
 
-    # ray end
-    circle_radius = np.sqrt(4*rho**2-4*rho**4/radius**2)
-    x_end_norot = radius - 2*rho**2/radius
-    y_end_norot = circle_radius*np.cos(theta_e)
-    z_end_norot = circle_radius*np.sin(theta_e)
-    x_end, y_end, z_end = rotate(x_end_norot, y_end_norot, z_end_norot, theta_r, phi_r)
+    # 2. Vectorized rotation (z-axis by phi_r, then y-axis by theta_r)
+    # Precompute trigonometric terms
+    cos_theta_r = np.cos(theta_r)   # cos(theta_r) goes smoothly from 1 to -1
+    sin_theta_r = np.sin(theta_r)   # sin(theta_r) >= 0
+    cos_phi_r = np.cos(phi_r)
+    sin_phi_r = np.sin(phi_r)
+
+    # --- Isotropic 3D Rotation ---
+    # We apply:
+    # 1. Y-axis rotation by theta_r (tilts the ray from z-axis)
+    # 2. Z-axis rotation by phi_r (spins the ray around azimuth)
+
+    # --- Rotate Starting Points (-r_start, 0, 0) ---
+    x_start = -r_start * sin_theta_r * cos_phi_r
+    y_start = -r_start * sin_theta_r * sin_phi_r
+    z_start = -r_start * cos_theta_r  # Spans -r_start to +r_start seamlessly!
+
+    # --- Rotate Ending Points (x_end_unrot, y_end_unrot, z_end_unrot) ---
+    # Step 1: Rotation around Y-axis by theta_r
+    x_tilt =  sin_theta_r * x_end_unrot + cos_theta_r * z_end_unrot
+    y_tilt =  y_end_unrot
+    z_tilt = -cos_theta_r * x_end_unrot + sin_theta_r * z_end_unrot
+
+    # Step 2: Rotation around Z-axis by phi_r
+    x_end = cos_phi_r * x_tilt - sin_phi_r * y_tilt
+    y_end = sin_phi_r * x_tilt + cos_phi_r * y_tilt
+    z_end = z_tilt
 
     return x_start, y_start, z_start, x_end, y_end, z_end
 
@@ -130,57 +160,6 @@ def metallicity_e(field, data):
     The data object containing the fields
     """
     return data["gas", "metal_density"] / data["gas", "density"] / Z_SUN
-
-def rotate(x, y, z, theta, phi):
-    """Rotate coordinates around the centre.
-    Two rotations are performed following:
-    - A rotation on the z axis with angle theta
-    - A rotation on the y axis with angle phi
-
-    Arguments
-    ---------
-    x : float
-    x coordinate of the point to rotate
-
-    y : float
-    y coordinate of the point to rotate
-
-    z : float
-    z coordinate of the point to rotate
-
-    theta: float
-    Rotation angle along z axis
-
-    phi: float
-    Rotation angle along y axis
-
-    Return
-    ------
-    x2: float
-    x coordinate of the rotated point
-
-    y2: float
-    y coordinate of the rotated point
-
-    z2: float
-    z coordinate of the rotated point
-    """
-    sin_theta = np.sin(theta)
-    cos_theta = np.cos(theta)
-    sin_phi = np.sin(phi)
-    cos_phi = np.cos(phi)
-
-    # rotation on z axis
-    x1 = cos_theta*x - sin_theta*y
-    y1 = sin_theta*x + cos_theta*y
-    z1 = z
-
-    # rotation on y axis
-    x2 = cos_phi*x1 + sin_phi*z1
-    y2 = y1
-    z2 = -sin_phi*x1 + cos_phi*z1
-
-    return x2, y2, z2
 
 def run_simple_ray(ds,
                    z,
